@@ -135,7 +135,6 @@ export function TrackerApp() {
     rangeTo,
     selectedDate,
     view,
-    demoEnabled,
   ]);
 
   useEffect(() => {

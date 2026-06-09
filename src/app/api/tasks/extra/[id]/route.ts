@@ -44,7 +44,7 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    if (isDemoMode(request)) {
+    if (isDemoMode(_request)) {
       const ok = demoStore.deleteExtraTask(id);
       if (!ok) return NextResponse.json({ error: "Extra task not found" }, { status: 404 });
       return NextResponse.json({ success: true });
