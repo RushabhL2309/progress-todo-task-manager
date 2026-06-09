@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    color-scheme: light only;
+  }
+
+  body {
+    @apply overflow-x-hidden bg-canvas text-ink antialiased;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-border bg-surface shadow-sm;
+  }
+
+  .btn-primary {
+    @apply inline-flex min-h-[44px] items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90 disabled:opacity-50;
+  }
+
+  .btn-ghost {
+    @apply inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border bg-surface text-muted transition-colors hover:border-accent/40 hover:text-ink;
+  }
+
+  .input-field {
+    @apply min-h-[44px] w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-muted/60 focus:border-accent;
+  }
+
+  .checkbox-cell {
+    @apply flex items-center justify-center rounded-lg transition-colors hover:bg-accent-light/50;
+  }
+
+  .table-scroll-container {
+    @apply max-w-full overflow-x-auto overflow-y-hidden overscroll-x-contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #d4d4ce transparent;
+  }
+
+  .table-scroll-container::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .table-scroll-container::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-border;
+  }
+
+  .sticky-col {
+    box-shadow: 4px 0 12px -6px rgba(26, 26, 26, 0.12);
+  }
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.22s ease-out;
+}
