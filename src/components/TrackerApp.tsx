@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { apiFetch, getDemoModeEnabled } from "@/lib/api-client";
+import { addDays } from "date-fns";
+import { apiFetch } from "@/lib/api-client";
 import { completionKey, formatPeriodLabel, getColumnsForView, navigateDate, parseDateKey, toDateKey } from "@/lib/dates";
 import { calculatePeriodStats } from "@/lib/score";
 import type {
@@ -12,6 +13,7 @@ import type {
   ViewMode,
 } from "@/lib/types";
 import { AddTaskDrawer, type DrawerTaskType } from "./AddTaskDrawer";
+import { DailyTodoView } from "./DailyTodoView";
 import { DashboardCharts } from "./DashboardCharts";
 import { DateNavigator } from "./DateNavigator";
 import { GridView } from "./GridView";
@@ -28,17 +30,17 @@ export function TrackerApp() {
   const [view, setView] = useState<ViewMode>("week");
   const [anchorDate, setAnchorDate] = useState(() => toDateKey(new Date()));
   const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
+  const [todoDate, setTodoDate] = useState(() => toDateKey(new Date()));
 
   const [scheduledTasks, setScheduledTasks] = useState<ScheduledTaskDTO[]>([]);
   const [grid, setGrid] = useState<GridData | null>(null);
   const [stats, setStats] = useState<PeriodStats | null>(null);
   const [extraTasks, setExtraTasks] = useState<ExtraTaskDTO[]>([]);
+  const [todoDayExtras, setTodoDayExtras] = useState<ExtraTaskDTO[]>([]);
   const [allExtras, setAllExtras] = useState<ExtraTaskDTO[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [demoEnabled, setDemoEnabled] = useState(true);
-
   const periodColumns = getColumnsForView(view, parseDateKey(anchorDate));
   const rangeFrom = periodColumns[0]?.dateKey ?? anchorDate;
   const rangeTo = periodColumns[periodColumns.length - 1]?.dateKey ?? anchorDate;
@@ -77,17 +79,19 @@ export function TrackerApp() {
     setLoading(true);
     setError(null);
     try {
-      const [tasks, gridData, statsData, extras, periodExtras] = await Promise.all([
+      const [tasks, gridData, statsData, extras, todoExtras, periodExtras] = await Promise.all([
         fetchScheduled(),
         fetchGrid(view, anchorDate),
         fetchStats(view, anchorDate),
         fetchExtras(selectedDate),
+        fetchExtras(todoDate),
         fetchExtrasInRange(rangeFrom, rangeTo),
       ]);
       setScheduledTasks(tasks);
       setGrid(gridData);
       setStats(statsData);
       setExtraTasks(extras);
+      setTodoDayExtras(todoExtras);
       setAllExtras(periodExtras);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -104,22 +108,25 @@ export function TrackerApp() {
     rangeFrom,
     rangeTo,
     selectedDate,
+    todoDate,
     view,
   ]);
 
   const refreshQuiet = useCallback(async () => {
     try {
-      const [tasks, gridData, statsData, extras, periodExtras] = await Promise.all([
+      const [tasks, gridData, statsData, extras, todoExtras, periodExtras] = await Promise.all([
         fetchScheduled(),
         fetchGrid(view, anchorDate),
         fetchStats(view, anchorDate),
         fetchExtras(selectedDate),
+        fetchExtras(todoDate),
         fetchExtrasInRange(rangeFrom, rangeTo),
       ]);
       setScheduledTasks(tasks);
       setGrid(gridData);
       setStats(statsData);
       setExtraTasks(extras);
+      setTodoDayExtras(todoExtras);
       setAllExtras(periodExtras);
     } catch {
       /* keep optimistic state on quiet refresh failure */
@@ -134,22 +141,19 @@ export function TrackerApp() {
     rangeFrom,
     rangeTo,
     selectedDate,
+    todoDate,
     view,
   ]);
-
-  useEffect(() => {
-    setDemoEnabled(getDemoModeEnabled());
-  }, []);
 
   useEffect(() => {
     refreshAll();
   }, [refreshAll]);
 
   useEffect(() => {
-    const onDemoChange = () => setDemoEnabled(getDemoModeEnabled());
+    const onDemoChange = () => refreshAll();
     window.addEventListener("demo-mode-change", onDemoChange);
     return () => window.removeEventListener("demo-mode-change", onDemoChange);
-  }, []);
+  }, [refreshAll]);
 
   useEffect(() => {
     if (view === "day") setSelectedDate(anchorDate);
@@ -254,6 +258,29 @@ export function TrackerApp() {
     await refreshAll();
   }
 
+  async function handleEditExtra(id: string, name: string) {
+    const res = await apiFetch(`/api/tasks/extra/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) throw new Error("Failed to update task");
+    await refreshAll();
+  }
+
+  async function handleCarryForward(fromDate: string) {
+    const res = await apiFetch("/api/tasks/extra/carry-forward", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fromDate }),
+    });
+    if (!res.ok) throw new Error("Failed to carry forward");
+    const data = (await res.json()) as { carried: number; toDate?: string };
+    await refreshAll();
+    if (data.toDate) setTodoDate(data.toDate);
+    return { carried: data.carried };
+  }
+
   function openDrawer(type: DrawerTaskType) {
     setDrawerType(type);
   }
@@ -278,21 +305,24 @@ export function TrackerApp() {
       ? "Progress Grid"
       : page === "dashboard"
         ? "Dashboard"
-        : page === "tasks"
-          ? "Manage Tasks"
-          : "Settings";
+        : page === "todo"
+          ? "Daily To-Do"
+          : page === "tasks"
+            ? "Manage Tasks"
+            : "Settings";
 
-  function handleDemoChange(enabled: boolean) {
-    setDemoEnabled(enabled);
+  const routinePending = scheduledTasks
+    .filter((t) => !grid?.completions[completionKey(t.id, todoDate)])
+    .map((t) => ({ id: t.id, name: t.name }));
+
+  function handleDemoChange() {
     refreshAll();
   }
 
   function handleViewAllTodos() {
-    const needsSwitch = page !== "grid";
-    if (needsSwitch) setPage("grid");
-    setTimeout(() => {
-      document.getElementById("todo-list")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, needsSwitch ? 200 : 0);
+    const first = stats?.todoItems[0];
+    if (first) setTodoDate(first.date);
+    setPage("todo");
   }
 
   return (
@@ -372,6 +402,26 @@ export function TrackerApp() {
               </div>
               <DashboardCharts stats={stats} loading={loading} />
             </div>
+          )}
+
+          {page === "todo" && (
+            <DailyTodoView
+              dateKey={todoDate}
+              extras={todoDayExtras}
+              scheduledTasks={scheduledTasks}
+              routinePending={routinePending}
+              loading={loading}
+              onDateChange={setTodoDate}
+              onPrevDay={() => setTodoDate(toDateKey(addDays(parseDateKey(todoDate), -1)))}
+              onNextDay={() => setTodoDate(toDateKey(addDays(parseDateKey(todoDate), 1)))}
+              onToday={() => setTodoDate(toDateKey(new Date()))}
+              onAdd={(name) => handleAddExtra(name, todoDate)}
+              onToggle={handleToggleExtra}
+              onEdit={handleEditExtra}
+              onDelete={handleDeleteExtra}
+              onCarryForward={() => handleCarryForward(todoDate)}
+              onToggleRoutine={(taskId) => handleToggleCompletion(taskId, todoDate, true)}
+            />
           )}
 
           {page === "tasks" && (

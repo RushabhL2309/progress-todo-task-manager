@@ -264,6 +264,35 @@ export const demoStore = {
     return true;
   },
 
+  carryForwardExtras(fromDate: string, toDate: string): {
+    carried: number;
+    toDate: string;
+    tasks: ExtraTaskDTO[];
+  } {
+    const store = getStore();
+    const incomplete = store.extraTasks.filter((t) => t.date === fromDate && !t.completed);
+    const existingNames = new Set(
+      store.extraTasks.filter((t) => t.date === toDate).map((t) => t.name.toLowerCase())
+    );
+
+    const created: ExtraTaskDTO[] = [];
+    for (const task of incomplete) {
+      if (existingNames.has(task.name.toLowerCase())) continue;
+      const copy: ExtraTaskDTO = {
+        id: newId("demo-ex", store.nextId++),
+        name: task.name,
+        date: toDate,
+        completed: false,
+        createdAt: new Date().toISOString(),
+      };
+      store.extraTasks.push(copy);
+      created.push(copy);
+      existingNames.add(task.name.toLowerCase());
+    }
+
+    return { carried: created.length, toDate, tasks: created };
+  },
+
   getGrid(view: ViewMode, dateParam: string): GridData {
     const store = getStore();
     const anchorDate = parseDateKey(dateParam);

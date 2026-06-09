@@ -10,7 +10,7 @@ interface HealthResponse {
 }
 
 interface SettingsViewProps {
-  onDemoChange: (enabled: boolean) => void;
+  onDemoChange: () => void;
 }
 
 export function SettingsView({ onDemoChange }: SettingsViewProps) {
@@ -55,14 +55,14 @@ export function SettingsView({ onDemoChange }: SettingsViewProps) {
   function handleTurnOffDemo() {
     setDemoModeEnabled(false);
     setDemoEnabled(false);
-    onDemoChange(false);
+    onDemoChange();
     checkHealth(false);
   }
 
   function handleTurnOnDemo() {
     setDemoModeEnabled(true);
     setDemoEnabled(true);
-    onDemoChange(true);
+    onDemoChange();
     checkHealth(true);
   }
 

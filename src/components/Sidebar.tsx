@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 
-export type AppPage = "grid" | "dashboard" | "tasks" | "settings";
+export type AppPage = "grid" | "dashboard" | "todo" | "tasks" | "settings";
 
 interface SidebarProps {
   active: AppPage;
@@ -32,6 +32,18 @@ const NAV: { id: AppPage; label: string; shortLabel: string; desc: string; icon:
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
         <path d="M3 17V9M8 17V3M13 17V11M18 17V6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    id: "todo",
+    label: "Daily To-Do",
+    shortLabel: "To-Do",
+    desc: "Add & edit day list",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
+        <path d="M4 6H16M7 10H16M7 14H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M5 10L6.5 11.5L9 8.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
   },
