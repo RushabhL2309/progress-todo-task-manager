@@ -5,6 +5,7 @@ import {
   startOfWeek,
   subDays,
 } from "date-fns";
+import { demoProjectsStore } from "./demo-projects-store";
 import { completionKey, getColumnsForView, parseDateKey, toDateKey } from "./dates";
 import { calculatePeriodStats } from "./score";
 import type {
@@ -234,17 +235,32 @@ export const demoStore = {
       .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
   },
 
-  addExtraTask(name: string, date: string): ExtraTaskDTO {
+  addExtraTask(
+    name: string,
+    date: string,
+    opts?: { completed?: boolean; projectId?: string; projectItemId?: string }
+  ): ExtraTaskDTO {
     const store = getStore();
     const task: ExtraTaskDTO = {
       id: newId("demo-ex", store.nextId++),
       name,
       date,
-      completed: false,
+      completed: opts?.completed ?? false,
       createdAt: new Date().toISOString(),
     };
+    if (opts?.projectId) task.projectId = opts.projectId;
+    if (opts?.projectItemId) task.projectItemId = opts.projectItemId;
     store.extraTasks.push(task);
     return task;
+  },
+
+  findExtraByProjectItemId(projectItemId: string): ExtraTaskDTO | undefined {
+    return getStore().extraTasks.find((t) => t.projectItemId === projectItemId);
+  },
+
+  syncExtraForProjectItem(projectItemId: string, completed: boolean): void {
+    const task = this.findExtraByProjectItemId(projectItemId);
+    if (task) task.completed = completed;
   },
 
   updateExtraTask(id: string, update: { completed?: boolean; name?: string }): ExtraTaskDTO | null {
@@ -253,6 +269,15 @@ export const demoStore = {
     if (!task) return null;
     if (typeof update.completed === "boolean") task.completed = update.completed;
     if (update.name) task.name = update.name;
+
+    if (typeof update.completed === "boolean" && task.projectId && task.projectItemId) {
+      demoProjectsStore.setItemStatus(
+        task.projectId,
+        task.projectItemId,
+        update.completed ? "resolved" : "open"
+      );
+    }
+
     return task;
   },
 

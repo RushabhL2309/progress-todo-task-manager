@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { addDays, format, parseISO } from "date-fns";
-import type { ExtraTaskDTO, ScheduledTaskDTO } from "@/lib/types";
+import type { ExtraTaskDTO, ProjectDTO, ScheduledTaskDTO } from "@/lib/types";
 import { Checkbox } from "./Checkbox";
 
 interface DailyTodoViewProps {
@@ -10,12 +10,13 @@ interface DailyTodoViewProps {
   extras: ExtraTaskDTO[];
   scheduledTasks: ScheduledTaskDTO[];
   routinePending: { id: string; name: string }[];
+  projects?: ProjectDTO[];
   loading: boolean;
   onDateChange: (dateKey: string) => void;
   onPrevDay: () => void;
   onNextDay: () => void;
   onToday: () => void;
-  onAdd: (name: string) => Promise<void>;
+  onAdd: (name: string, projectId?: string) => Promise<void>;
   onToggle: (id: string, completed: boolean) => Promise<void>;
   onEdit: (id: string, name: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -28,6 +29,7 @@ export function DailyTodoView({
   extras,
   scheduledTasks,
   routinePending,
+  projects = [],
   loading,
   onDateChange,
   onPrevDay,
@@ -41,7 +43,10 @@ export function DailyTodoView({
   onToggleRoutine,
 }: DailyTodoViewProps) {
   const [name, setName] = useState("");
+  const [projectId, setProjectId] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const activeProjects = projects.filter((p) => p.status === "active");
+  const projectNames = Object.fromEntries(projects.map((p) => [p.id, p.name]));
   const [carrying, setCarrying] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -58,8 +63,9 @@ export function DailyTodoView({
     setSubmitting(true);
     setMessage(null);
     try {
-      await onAdd(trimmed);
+      await onAdd(trimmed, projectId || undefined);
       setName("");
+      setProjectId("");
     } finally {
       setSubmitting(false);
     }
@@ -149,18 +155,37 @@ export function DailyTodoView({
         <h2 className="text-sm font-semibold text-ink">Today&apos;s to-do list</h2>
         <p className="mt-1 text-xs text-muted">Extra tasks for this day · 2 pts each when done</p>
 
-        <form onSubmit={handleAdd} className="mt-4 flex flex-col gap-2 sm:flex-row">
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Add a task for this day…"
-            className="input-field flex-1"
-            disabled={submitting}
-          />
-          <button type="submit" className="btn-primary shrink-0" disabled={submitting || !name.trim()}>
-            Add
-          </button>
+        <form onSubmit={handleAdd} className="mt-4 space-y-2">
+          {activeProjects.length > 0 && (
+            <select
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              className="input-field text-sm"
+              disabled={submitting}
+            >
+              <option value="">No project — one-off extra</option>
+              {activeProjects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={
+                projectId ? "Today's goal for this project…" : "Add a task for this day…"
+              }
+              className="input-field flex-1"
+              disabled={submitting}
+            />
+            <button type="submit" className="btn-primary shrink-0" disabled={submitting || !name.trim()}>
+              Add
+            </button>
+          </div>
         </form>
 
         {loading ? (
@@ -206,13 +231,20 @@ export function DailyTodoView({
                   </div>
                 ) : (
                   <>
-                    <span
-                      className={`min-w-0 flex-1 truncate text-sm ${
-                        task.completed ? "text-muted line-through" : "text-ink"
-                      }`}
-                    >
-                      {task.name}
-                    </span>
+                    <div className="min-w-0 flex-1">
+                      <span
+                        className={`block truncate text-sm ${
+                          task.completed ? "text-muted line-through" : "text-ink"
+                        }`}
+                      >
+                        {task.name}
+                      </span>
+                      {task.projectId && projectNames[task.projectId] && (
+                        <span className="mt-0.5 inline-block rounded bg-accent-light px-1.5 py-0.5 text-[10px] font-medium text-accent">
+                          {projectNames[task.projectId]}
+                        </span>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={() => {

@@ -15,12 +15,81 @@ export interface CompletionDTO {
   completed: boolean;
 }
 
+export type ProjectStatus = "active" | "paused" | "completed";
+export type ProjectItemType = "issue" | "feature" | "task";
+export type ProjectItemStatus = "open" | "resolved";
+
 export interface ExtraTaskDTO {
   id: string;
   name: string;
   date: string;
   completed: boolean;
   createdAt: string;
+  projectId?: string;
+  projectItemId?: string;
+}
+
+export interface ProjectTypeBreakdown {
+  done: number;
+  total: number;
+}
+
+export interface ProjectDTO {
+  id: string;
+  name: string;
+  description: string;
+  status: ProjectStatus;
+  color: string;
+  createdAt: string;
+  updatedAt: string;
+  openCount: number;
+  resolvedCount: number;
+  totalItems: number;
+  /** resolvedCount / totalItems (issues + features + tasks) */
+  completionPercent: number;
+  breakdown: {
+    issue: ProjectTypeBreakdown;
+    feature: ProjectTypeBreakdown;
+    task: ProjectTypeBreakdown;
+  };
+  overdueCount: number;
+  nextDeadline: string | null;
+}
+
+export interface ProjectItemDTO {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string;
+  type: ProjectItemType;
+  status: ProjectItemStatus;
+  dueDate: string | null;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface ProjectUpdateDTO {
+  id: string;
+  projectId: string;
+  date: string;
+  description: string;
+  resolvedItemIds: string[];
+  linkedExtraTaskId: string | null;
+  createdAt: string;
+}
+
+export interface ProjectDetailDTO {
+  project: ProjectDTO;
+  items: ProjectItemDTO[];
+  updates: ProjectUpdateDTO[];
+}
+
+export interface ProjectsDashboardStats {
+  totalProjects: number;
+  activeProjects: number;
+  openIssues: number;
+  resolvedIssues: number;
+  projects: ProjectDTO[];
 }
 
 export interface DayColumn {

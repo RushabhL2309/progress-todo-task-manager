@@ -2,13 +2,14 @@
 
 import { FormEvent, useState } from "react";
 import { format, parseISO } from "date-fns";
-import type { ExtraTaskDTO } from "@/lib/types";
+import type { ExtraTaskDTO, ProjectDTO } from "@/lib/types";
 import { Checkbox } from "./Checkbox";
 
 interface ExtraTasksPanelProps {
   dateKey: string;
   tasks: ExtraTaskDTO[];
-  onAdd: (name: string) => Promise<void>;
+  projects?: ProjectDTO[];
+  onAdd: (name: string, projectId?: string) => Promise<void>;
   onToggle: (id: string, completed: boolean) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   loading?: boolean;
@@ -20,6 +21,7 @@ interface ExtraTasksPanelProps {
 export function ExtraTasksPanel({
   dateKey,
   tasks,
+  projects = [],
   onAdd,
   onToggle,
   onDelete,
@@ -29,9 +31,12 @@ export function ExtraTasksPanel({
   onOpenDrawer,
 }: ExtraTasksPanelProps) {
   const [name, setName] = useState("");
+  const [projectId, setProjectId] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const projectNames = Object.fromEntries(projects.map((p) => [p.id, p.name]));
   const dateLabel = subtitle ?? format(parseISO(dateKey), "EEEE, d MMMM yyyy");
+  const activeProjects = projects.filter((p) => p.status === "active");
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -40,8 +45,9 @@ export function ExtraTasksPanel({
 
     setSubmitting(true);
     try {
-      await onAdd(trimmed);
+      await onAdd(trimmed, projectId || undefined);
       setName("");
+      setProjectId("");
     } finally {
       setSubmitting(false);
     }
@@ -70,21 +76,45 @@ export function ExtraTasksPanel({
         )}
       </div>
 
-      {!compact && (
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-2 sm:flex-row">
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Add a one-off task for this day"
-            className="input-field flex-1"
-            disabled={submitting}
-          />
-          <button type="submit" className="btn-primary shrink-0" disabled={submitting || !name.trim()}>
-            Add
-          </button>
-        </form>
-      )}
+      <form onSubmit={handleSubmit} className={`${compact ? "mt-3" : "mt-4"} space-y-2`}>
+          {activeProjects.length > 0 && (
+            <select
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              className="input-field text-sm"
+              disabled={submitting}
+            >
+              <option value="">No project — one-off extra</option>
+              {activeProjects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={
+                projectId
+                  ? "Today's goal for this project…"
+                  : "Add a one-off task for this day"
+              }
+              className="input-field flex-1"
+              disabled={submitting}
+            />
+            <button type="submit" className="btn-primary shrink-0" disabled={submitting || !name.trim()}>
+              Add
+            </button>
+          </div>
+          {projectId && !compact && (
+            <p className="text-[10px] text-muted">
+              Also adds as a task on the project with today&apos;s due date
+            </p>
+          )}
+      </form>
 
       {loading ? (
         <div className="mt-4 h-16 animate-pulse rounded-lg bg-border/30" />
@@ -103,13 +133,20 @@ export function ExtraTasksPanel({
                 label={task.name}
                 size="sm"
               />
-              <span
-                className={`flex-1 text-sm ${
-                  task.completed ? "text-muted line-through" : "text-ink"
-                }`}
-              >
-                {task.name}
-              </span>
+              <div className="min-w-0 flex-1">
+                <span
+                  className={`block text-sm ${
+                    task.completed ? "text-muted line-through" : "text-ink"
+                  }`}
+                >
+                  {task.name}
+                </span>
+                {task.projectId && projectNames[task.projectId] && (
+                  <span className="mt-0.5 inline-block rounded bg-accent-light px-1.5 py-0.5 text-[10px] font-medium text-accent">
+                    {projectNames[task.projectId]}
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => onDelete(task.id)}

@@ -1,5 +1,8 @@
 import { Completion } from "@/models/Completion";
 import { ExtraTask } from "@/models/ExtraTask";
+import { Project } from "@/models/Project";
+import { ProjectItem } from "@/models/ProjectItem";
+import { ProjectUpdate } from "@/models/ProjectUpdate";
 import { ScheduledTask } from "@/models/ScheduledTask";
 
 let indexesReady = false;
@@ -12,6 +15,9 @@ export async function ensureIndexes(): Promise<void> {
     ScheduledTask.createIndexes(),
     Completion.createIndexes(),
     ExtraTask.createIndexes(),
+    Project.createIndexes(),
+    ProjectItem.createIndexes(),
+    ProjectUpdate.createIndexes(),
   ]);
 
   indexesReady = true;

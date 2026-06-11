@@ -9,6 +9,7 @@ import type {
   ExtraTaskDTO,
   GridData,
   PeriodStats,
+  ProjectDTO,
   ScheduledTaskDTO,
   ViewMode,
 } from "@/lib/types";
@@ -20,6 +21,7 @@ import { GridView } from "./GridView";
 import { Sidebar, type AppPage } from "./Sidebar";
 import { TasksView } from "./TasksView";
 import { PriorityTodoCard } from "./PriorityTodoCard";
+import { ProjectsView } from "./ProjectsView";
 import { SettingsView } from "./SettingsView";
 import { ViewModeTabs } from "./ViewModeTabs";
 
@@ -38,6 +40,7 @@ export function TrackerApp() {
   const [extraTasks, setExtraTasks] = useState<ExtraTaskDTO[]>([]);
   const [todoDayExtras, setTodoDayExtras] = useState<ExtraTaskDTO[]>([]);
   const [allExtras, setAllExtras] = useState<ExtraTaskDTO[]>([]);
+  const [projects, setProjects] = useState<ProjectDTO[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,105 +48,56 @@ export function TrackerApp() {
   const rangeFrom = periodColumns[0]?.dateKey ?? anchorDate;
   const rangeTo = periodColumns[periodColumns.length - 1]?.dateKey ?? anchorDate;
 
-  const fetchScheduled = useCallback(async () => {
-    const res = await apiFetch("/api/tasks/scheduled");
-    if (!res.ok) throw new Error("Failed to load scheduled tasks");
-    return res.json() as Promise<ScheduledTaskDTO[]>;
-  }, []);
+  const fetchBootstrap = useCallback(async () => {
+    const q = new URLSearchParams({
+      view,
+      anchorDate,
+      selectedDate,
+      todoDate,
+    });
+    const res = await apiFetch(`/api/bootstrap?${q}`);
+    if (!res.ok) throw new Error("Failed to load data");
+    return res.json() as Promise<{
+      scheduledTasks: ScheduledTaskDTO[];
+      grid: GridData;
+      stats: PeriodStats;
+      extrasSelected: ExtraTaskDTO[];
+      extrasTodo: ExtraTaskDTO[];
+      extrasRange: ExtraTaskDTO[];
+    }>;
+  }, [anchorDate, selectedDate, todoDate, view]);
 
-  const fetchGrid = useCallback(async (v: ViewMode, date: string) => {
-    const res = await apiFetch(`/api/grid?view=${v}&date=${date}`);
-    if (!res.ok) throw new Error("Failed to load grid");
-    return res.json() as Promise<GridData>;
-  }, []);
-
-  const fetchStats = useCallback(async (v: ViewMode, date: string) => {
-    const res = await apiFetch(`/api/stats?view=${v}&date=${date}`);
-    if (!res.ok) throw new Error("Failed to load stats");
-    return res.json() as Promise<PeriodStats>;
-  }, []);
-
-  const fetchExtras = useCallback(async (date: string) => {
-    const res = await apiFetch(`/api/tasks/extra?date=${date}`);
-    if (!res.ok) throw new Error("Failed to load extra tasks");
-    return res.json() as Promise<ExtraTaskDTO[]>;
-  }, []);
-
-  const fetchExtrasInRange = useCallback(async (from: string, to: string) => {
-    const res = await apiFetch(`/api/tasks/extra?from=${from}&to=${to}`);
-    if (!res.ok) throw new Error("Failed to load extra tasks");
-    return res.json() as Promise<ExtraTaskDTO[]>;
-  }, []);
+  const applyBootstrap = useCallback(
+    (data: Awaited<ReturnType<typeof fetchBootstrap>>) => {
+      setScheduledTasks(data.scheduledTasks);
+      setGrid(data.grid);
+      setStats(data.stats);
+      setExtraTasks(data.extrasSelected);
+      setTodoDayExtras(data.extrasTodo);
+      setAllExtras(data.extrasRange);
+    },
+    []
+  );
 
   const refreshAll = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [tasks, gridData, statsData, extras, todoExtras, periodExtras] = await Promise.all([
-        fetchScheduled(),
-        fetchGrid(view, anchorDate),
-        fetchStats(view, anchorDate),
-        fetchExtras(selectedDate),
-        fetchExtras(todoDate),
-        fetchExtrasInRange(rangeFrom, rangeTo),
-      ]);
-      setScheduledTasks(tasks);
-      setGrid(gridData);
-      setStats(statsData);
-      setExtraTasks(extras);
-      setTodoDayExtras(todoExtras);
-      setAllExtras(periodExtras);
+      applyBootstrap(await fetchBootstrap());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
-  }, [
-    anchorDate,
-    fetchExtras,
-    fetchExtrasInRange,
-    fetchGrid,
-    fetchScheduled,
-    fetchStats,
-    rangeFrom,
-    rangeTo,
-    selectedDate,
-    todoDate,
-    view,
-  ]);
+  }, [applyBootstrap, fetchBootstrap]);
 
   const refreshQuiet = useCallback(async () => {
     try {
-      const [tasks, gridData, statsData, extras, todoExtras, periodExtras] = await Promise.all([
-        fetchScheduled(),
-        fetchGrid(view, anchorDate),
-        fetchStats(view, anchorDate),
-        fetchExtras(selectedDate),
-        fetchExtras(todoDate),
-        fetchExtrasInRange(rangeFrom, rangeTo),
-      ]);
-      setScheduledTasks(tasks);
-      setGrid(gridData);
-      setStats(statsData);
-      setExtraTasks(extras);
-      setTodoDayExtras(todoExtras);
-      setAllExtras(periodExtras);
+      applyBootstrap(await fetchBootstrap());
     } catch {
       /* keep optimistic state on quiet refresh failure */
     }
-  }, [
-    anchorDate,
-    fetchExtras,
-    fetchExtrasInRange,
-    fetchGrid,
-    fetchScheduled,
-    fetchStats,
-    rangeFrom,
-    rangeTo,
-    selectedDate,
-    todoDate,
-    view,
-  ]);
+  }, [applyBootstrap, fetchBootstrap]);
 
   useEffect(() => {
     refreshAll();
@@ -216,11 +170,18 @@ export function TrackerApp() {
     }
   }
 
-  async function handleAddExtra(name: string, date: string) {
+  useEffect(() => {
+    apiFetch("/api/projects")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: ProjectDTO[]) => setProjects(data))
+      .catch(() => setProjects([]));
+  }, []);
+
+  async function handleAddExtra(name: string, date: string, projectId?: string) {
     const res = await apiFetch("/api/tasks/extra", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, date }),
+      body: JSON.stringify({ name, date, projectId: projectId || undefined }),
     });
     if (!res.ok) throw new Error("Failed to add extra task");
     if (date === selectedDate) await refreshAll();
@@ -305,11 +266,13 @@ export function TrackerApp() {
       ? "Progress Grid"
       : page === "dashboard"
         ? "Dashboard"
-        : page === "todo"
-          ? "Daily To-Do"
-          : page === "tasks"
-            ? "Manage Tasks"
-            : "Settings";
+        : page === "projects"
+          ? "Projects"
+          : page === "todo"
+            ? "Daily To-Do"
+            : page === "tasks"
+              ? "Manage Tasks"
+              : "Settings";
 
   const routinePending = scheduledTasks
     .filter((t) => !grid?.completions[completionKey(t.id, todoDate)])
@@ -361,6 +324,7 @@ export function TrackerApp() {
               grid={grid}
               stats={stats}
               extraTasks={extraTasks}
+              projects={projects}
               loading={loading}
               onViewChange={setView}
               onPrev={() => handleNavigate(-1)}
@@ -372,7 +336,7 @@ export function TrackerApp() {
               onAddExtra={() => openDrawer("extra")}
               onToggleExtra={handleToggleExtra}
               onDeleteExtra={handleDeleteExtra}
-              onAddExtraInline={(name) => handleAddExtra(name, selectedDate)}
+              onAddExtraInline={(name, projectId) => handleAddExtra(name, selectedDate, projectId)}
               onToggleScheduledFromTodo={(taskId, date) =>
                 handleToggleCompletion(taskId, date, true)
               }
@@ -404,18 +368,23 @@ export function TrackerApp() {
             </div>
           )}
 
+          {page === "projects" && (
+            <ProjectsView onWorkLogged={refreshQuiet} />
+          )}
+
           {page === "todo" && (
             <DailyTodoView
               dateKey={todoDate}
               extras={todoDayExtras}
               scheduledTasks={scheduledTasks}
               routinePending={routinePending}
+              projects={projects}
               loading={loading}
               onDateChange={setTodoDate}
               onPrevDay={() => setTodoDate(toDateKey(addDays(parseDateKey(todoDate), -1)))}
               onNextDay={() => setTodoDate(toDateKey(addDays(parseDateKey(todoDate), 1)))}
               onToday={() => setTodoDate(toDateKey(new Date()))}
-              onAdd={(name) => handleAddExtra(name, todoDate)}
+              onAdd={(name, projectId) => handleAddExtra(name, todoDate, projectId)}
               onToggle={handleToggleExtra}
               onEdit={handleEditExtra}
               onDelete={handleDeleteExtra}
@@ -445,6 +414,7 @@ export function TrackerApp() {
         open={drawerType !== null}
         type={drawerType}
         selectedDate={selectedDate}
+        projects={projects}
         onClose={() => setDrawerType(null)}
         onAddRegular={handleAddScheduled}
         onAddExtra={handleAddExtra}

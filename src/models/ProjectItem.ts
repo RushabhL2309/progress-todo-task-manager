@@ -1,0 +1,24 @@
+import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
+
+const ProjectItemSchema = new Schema(
+  {
+    projectId: { type: Schema.Types.ObjectId, ref: "Project", required: true },
+    title: { type: String, required: true, trim: true },
+    description: { type: String, default: "" },
+    type: { type: String, enum: ["issue", "feature", "task"], default: "task" },
+    status: { type: String, enum: ["open", "resolved"], default: "open" },
+    dueDate: { type: String, default: null },
+    sortOrder: { type: Number, default: 0 },
+  },
+  { timestamps: true }
+);
+
+ProjectItemSchema.index({ projectId: 1, status: 1 });
+
+export type ProjectItemDocument = InferSchemaType<typeof ProjectItemSchema> & {
+  _id: mongoose.Types.ObjectId;
+};
+
+export const ProjectItem: Model<ProjectItemDocument> =
+  mongoose.models.ProjectItem ??
+  mongoose.model<ProjectItemDocument>("ProjectItem", ProjectItemSchema);

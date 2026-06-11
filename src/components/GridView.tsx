@@ -1,7 +1,7 @@
 "use client";
 
 import { format, parseISO } from "date-fns";
-import type { ExtraTaskDTO, GridData, PeriodStats, ScheduledTaskDTO, ViewMode } from "@/lib/types";
+import type { ExtraTaskDTO, GridData, PeriodStats, ProjectDTO, ScheduledTaskDTO, ViewMode } from "@/lib/types";
 import { DateNavigator } from "./DateNavigator";
 import { ExtraTasksPanel } from "./ExtraTasksPanel";
 import { TaskGrid } from "./TaskGrid";
@@ -16,6 +16,7 @@ interface GridViewProps {
   grid: GridData | null;
   stats: PeriodStats | null;
   extraTasks: ExtraTaskDTO[];
+  projects?: ProjectDTO[];
   loading: boolean;
   onViewChange: (v: ViewMode) => void;
   onPrev: () => void;
@@ -27,7 +28,7 @@ interface GridViewProps {
   onAddExtra: () => void;
   onToggleExtra: (id: string, completed: boolean) => Promise<void>;
   onDeleteExtra: (id: string) => Promise<void>;
-  onAddExtraInline: (name: string) => Promise<void>;
+  onAddExtraInline: (name: string, projectId?: string) => Promise<void>;
   onToggleScheduledFromTodo: (taskId: string, date: string) => void;
   onToggleExtraFromTodo: (id: string) => void;
 }
@@ -40,6 +41,7 @@ export function GridView({
   grid,
   stats,
   extraTasks,
+  projects,
   loading,
   onViewChange,
   onPrev,
@@ -106,6 +108,7 @@ export function GridView({
           <ExtraTasksPanel
             dateKey={selectedDate}
             tasks={extraTasks}
+            projects={projects}
             onAdd={onAddExtraInline}
             onToggle={onToggleExtra}
             onDelete={onDeleteExtra}

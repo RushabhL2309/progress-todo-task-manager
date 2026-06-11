@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 
-export type AppPage = "grid" | "dashboard" | "todo" | "tasks" | "settings";
+export type AppPage = "grid" | "dashboard" | "projects" | "todo" | "tasks" | "settings";
 
 interface SidebarProps {
   active: AppPage;
@@ -32,6 +32,19 @@ const NAV: { id: AppPage; label: string; shortLabel: string; desc: string; icon:
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
         <path d="M3 17V9M8 17V3M13 17V11M18 17V6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    id: "projects",
+    label: "Projects",
+    shortLabel: "Proj",
+    desc: "Multi-project hub",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
+        <rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M3 8H17" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M7 4V8" stroke="currentColor" strokeWidth="1.5" />
       </svg>
     ),
   },
@@ -105,7 +118,9 @@ function NavButton({
         >
           {item.icon}
         </span>
-        <span className="text-[10px] font-semibold leading-none">{item.shortLabel}</span>
+        <span className="max-w-[52px] truncate text-[9px] font-semibold leading-none sm:text-[10px]">
+          {item.shortLabel}
+        </span>
       </button>
     );
   }

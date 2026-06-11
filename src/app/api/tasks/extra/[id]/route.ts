@@ -4,6 +4,17 @@ import { demoStore } from "@/lib/demo-store";
 import { connectDB } from "@/lib/mongodb";
 import { toExtraTaskDTO } from "@/lib/serializers";
 import { ExtraTask } from "@/models/ExtraTask";
+import { ProjectItem } from "@/models/ProjectItem";
+
+async function syncProjectItem(
+  projectItemId: string | undefined | null,
+  completed: boolean
+) {
+  if (!projectItemId) return;
+  await ProjectItem.findByIdAndUpdate(projectItemId, {
+    status: completed ? "resolved" : "open",
+  });
+}
 
 export async function PATCH(
   request: Request,
@@ -24,13 +35,18 @@ export async function PATCH(
     }
 
     await connectDB();
-    const task = await ExtraTask.findByIdAndUpdate(id, update, { new: true });
-
-    if (!task) {
+    const existing = await ExtraTask.findById(id);
+    if (!existing) {
       return NextResponse.json({ error: "Extra task not found" }, { status: 404 });
     }
 
-    return NextResponse.json(toExtraTaskDTO(task));
+    const task = await ExtraTask.findByIdAndUpdate(id, update, { new: true });
+
+    if (typeof update.completed === "boolean" && task?.projectItemId) {
+      await syncProjectItem(task.projectItemId.toString(), update.completed);
+    }
+
+    return NextResponse.json(toExtraTaskDTO(task!));
   } catch (error) {
     console.error("PATCH /api/tasks/extra/[id]", error);
     return NextResponse.json({ error: "Failed to update extra task" }, { status: 500 });

@@ -24,13 +24,16 @@ export function toCompletionDTO(doc: CompletionDocument): CompletionDTO {
 }
 
 export function toExtraTaskDTO(doc: ExtraTaskDocument): ExtraTaskDTO {
-  return {
+  const dto: ExtraTaskDTO = {
     id: doc._id.toString(),
     name: doc.name,
     date: doc.date,
     completed: doc.completed,
     createdAt: doc.createdAt.toISOString(),
   };
+  if (doc.projectId) dto.projectId = doc.projectId.toString();
+  if (doc.projectItemId) dto.projectItemId = doc.projectItemId.toString();
+  return dto;
 }
 
 export function completionsToMap(docs: CompletionDocument[]): Record<string, boolean> {

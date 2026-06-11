@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { isDemoMode } from "@/lib/demo-mode";
+import { demoProjectsStore } from "@/lib/demo-projects-store";
 import { demoStore } from "@/lib/demo-store";
 import { connectDB } from "@/lib/mongodb";
 import { toExtraTaskDTO } from "@/lib/serializers";
 import { ExtraTask } from "@/models/ExtraTask";
+import { ProjectItem } from "@/models/ProjectItem";
 
 export async function GET(request: Request) {
   try {
@@ -45,16 +47,52 @@ export async function POST(request: Request) {
     const body = await request.json();
     const name = typeof body.name === "string" ? body.name.trim() : "";
     const date = typeof body.date === "string" ? body.date : "";
+    const projectId = typeof body.projectId === "string" ? body.projectId.trim() : "";
 
     if (!name || !date) {
       return NextResponse.json({ error: "Name and date are required" }, { status: 400 });
     }
 
     if (isDemoMode(request)) {
+      if (projectId) {
+        const item = demoProjectsStore.addItem(projectId, {
+          title: name,
+          description: "Today's goal from extra work",
+          type: "task",
+          dueDate: date,
+        });
+        if (!item) {
+          return NextResponse.json({ error: "Project not found" }, { status: 404 });
+        }
+        return NextResponse.json(
+          demoStore.addExtraTask(name, date, { projectId, projectItemId: item.id }),
+          { status: 201 }
+        );
+      }
       return NextResponse.json(demoStore.addExtraTask(name, date), { status: 201 });
     }
 
     await connectDB();
+
+    if (projectId) {
+      const count = await ProjectItem.countDocuments({ projectId });
+      const item = await ProjectItem.create({
+        projectId,
+        title: name,
+        description: "Today's goal from extra work",
+        type: "task",
+        dueDate: date,
+        sortOrder: count,
+      });
+      const task = await ExtraTask.create({
+        name,
+        date,
+        projectId,
+        projectItemId: item._id,
+      });
+      return NextResponse.json(toExtraTaskDTO(task), { status: 201 });
+    }
+
     const task = await ExtraTask.create({ name, date });
     return NextResponse.json(toExtraTaskDTO(task), { status: 201 });
   } catch (error) {
