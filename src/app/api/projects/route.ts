@@ -5,12 +5,16 @@ import { isDemoMode } from "@/lib/demo-mode";
 import { demoProjectsStore } from "@/lib/demo-projects-store";
 import { connectDB } from "@/lib/mongodb";
 import { projectAccessFilter } from "@/lib/permissions";
+import type { UserRole } from "@/lib/auth-types";
 import { toProjectDTO, toProjectItemDTO } from "@/lib/project-serializers";
 import { Project } from "@/models/Project";
 import { ProjectItem } from "@/models/ProjectItem";
 
 async function listWithStats(userId: string, role: string) {
-  const access = projectAccessFilter({ id: userId, email: "", name: "", role: role as "master" | "user", modules: {} as never });
+  const access = projectAccessFilter({
+    id: userId,
+    role: role as UserRole,
+  });
   const projects = await Project.find(access).sort({ updatedAt: -1 });
   const ids = projects.map((p) => p._id);
   const allItems = await ProjectItem.find({ projectId: { $in: ids } }).sort({
