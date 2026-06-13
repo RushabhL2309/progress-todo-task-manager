@@ -16,7 +16,7 @@ export function TodoList({ items, onToggleScheduled, onToggleExtra, loading }: T
   }
 
   return (
-    <div id="todo-list" className="card scroll-mt-24 p-4 sm:p-5">
+    <div id="todo-list" className="card min-w-0 overflow-hidden scroll-mt-24 p-4 sm:p-5">
       <h2 className="text-sm font-semibold text-ink">To-do list</h2>
       <p className="mt-1 text-xs text-muted">Unchecked items in the current period</p>
 

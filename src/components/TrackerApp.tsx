@@ -115,18 +115,27 @@ export function TrackerApp() {
   }, [applyBootstrap, fetchBootstrap, user]);
 
   useEffect(() => {
-    async function loadSession() {
-      const res = await fetch("/api/auth/me");
-      if (!res.ok) {
-        router.push("/login");
-        return null;
+    async function loadSession(): Promise<SessionUser | null | undefined> {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (!res.ok) {
+          if (res.status === 401) return null;
+          return undefined;
+        }
+        const data = await res.json();
+        return data.user as SessionUser;
+      } catch {
+        // Server restarting, offline, or dev server stopped — keep current session
+        return undefined;
       }
-      const data = await res.json();
-      return data.user as SessionUser;
     }
 
     loadSession()
       .then((sessionUser) => {
+        if (sessionUser === null) {
+          router.push("/login");
+          return;
+        }
         if (sessionUser) {
           setUser(sessionUser);
           setPage(defaultPageForUser(sessionUser));
@@ -136,7 +145,12 @@ export function TrackerApp() {
 
     async function refreshSession() {
       const sessionUser = await loadSession();
+      if (sessionUser === null) {
+        router.push("/login");
+        return;
+      }
       if (!sessionUser) return;
+
       setUser((prev) => {
         if (prev && JSON.stringify(prev.modules) !== JSON.stringify(sessionUser.modules)) {
           setPage((current) =>
@@ -389,11 +403,27 @@ export function TrackerApp() {
       <Toast message={toastMessage} onDone={() => setToastMessage(null)} />
       <Sidebar active={page} user={user} onNavigate={setPage} />
 
-      <div className="min-h-screen pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] lg:pb-0 lg:pl-[252px]">
+      <div className="min-h-screen pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] lg:pb-0 lg:pl-[252px]">
         <header className="sticky top-0 z-30 border-b border-border bg-surface/95 backdrop-blur-md">
-          <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6 sm:py-3 lg:px-8">
-            <h1 className="min-w-0 truncate text-base font-semibold text-ink sm:text-lg">{pageTitle}</h1>
-            <div className="flex items-center justify-between gap-3 sm:justify-end">
+          <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-2.5 sm:px-6 sm:py-3 lg:px-8">
+            <div className="flex min-w-0 items-center justify-between gap-2">
+              <h1 className="min-w-0 flex-1 truncate text-base font-semibold text-ink sm:text-lg">
+                {pageTitle}
+              </h1>
+              <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+                <NotificationBell onNavigate={handleNotificationNavigate} onToast={showToast} />
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="btn-ghost !min-h-9 px-2.5 text-xs font-medium sm:px-3 sm:text-sm"
+                  title={`Sign out ${user.name}`}
+                >
+                  <span className="hidden sm:inline">Sign out</span>
+                  <span className="sm:hidden">Out</span>
+                </button>
+              </div>
+            </div>
+            <div className="hidden min-w-0 sm:block">
               <PriorityTodoCard
                 items={stats?.todoItems ?? []}
                 loading={loading}
@@ -401,22 +431,11 @@ export function TrackerApp() {
                 onToggleExtra={(id) => handleToggleExtra(id, true)}
                 onViewAll={handleViewAllTodos}
               />
-              <div className="flex shrink-0 items-center gap-2">
-                <NotificationBell onNavigate={handleNotificationNavigate} onToast={showToast} />
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="btn-ghost !min-h-9 px-3 text-xs font-medium sm:text-sm"
-                  title={`Sign out ${user.name}`}
-                >
-                  Sign out
-                </button>
-              </div>
             </div>
           </div>
         </header>
 
-        <main className="mx-auto max-w-6xl min-w-0 px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+        <main className="mx-auto max-w-6xl min-w-0 overflow-x-hidden px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
           {error && (
             <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}

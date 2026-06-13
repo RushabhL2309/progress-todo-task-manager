@@ -1,8 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { SessionUser, UserModules } from "@/lib/auth-types";
 import { effectiveModules, isMaster } from "@/lib/user-access";
+import { MobileNavDrawer } from "./MobileNavDrawer";
 
 export type AppPage =
   | "grid"
@@ -167,37 +168,11 @@ function NavButton({
   item,
   isActive,
   onClick,
-  layout,
 }: {
   item: NavItem;
   isActive: boolean;
   onClick: () => void;
-  layout: "sidebar" | "mobile";
 }) {
-  if (layout === "mobile") {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        aria-current={isActive ? "page" : undefined}
-        className={`flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 transition-colors ${
-          isActive ? "text-accent" : "text-muted"
-        }`}
-      >
-        <span
-          className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-            isActive ? "bg-accent-light text-accent" : ""
-          }`}
-        >
-          {item.icon}
-        </span>
-        <span className="max-w-[52px] truncate text-[9px] font-semibold leading-none sm:text-[10px]">
-          {item.shortLabel}
-        </span>
-      </button>
-    );
-  }
-
   return (
     <button
       type="button"
@@ -217,7 +192,9 @@ function NavButton({
 }
 
 export function Sidebar({ active, user, onNavigate }: SidebarProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const items = visibleNav(user);
+  const activeItem = items.find((item) => item.id === active);
 
   return (
     <>
@@ -252,7 +229,6 @@ export function Sidebar({ active, user, onNavigate }: SidebarProps) {
               item={item}
               isActive={active === item.id}
               onClick={() => onNavigate(item.id)}
-              layout="sidebar"
             />
           ))}
         </nav>
@@ -264,22 +240,31 @@ export function Sidebar({ active, user, onNavigate }: SidebarProps) {
         </div>
       </aside>
 
-      <nav
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 px-1 pb-[env(safe-area-inset-bottom,0px)] pt-1 shadow-[0_-4px_24px_rgba(26,26,26,0.06)] backdrop-blur-md lg:hidden"
-        aria-label="Main navigation"
+      <MobileNavDrawer
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        items={items}
+        active={active}
+        onNavigate={onNavigate}
+        userName={user.name}
+      />
+
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] pt-2 shadow-[0_-4px_24px_rgba(26,26,26,0.06)] backdrop-blur-md lg:hidden"
       >
-        <div className="mx-auto flex max-w-lg items-stretch justify-between gap-0.5 overflow-x-auto px-1">
-          {items.map((item) => (
-            <NavButton
-              key={item.id}
-              item={item}
-              isActive={active === item.id}
-              onClick={() => onNavigate(item.id)}
-              layout="mobile"
-            />
-          ))}
-        </div>
-      </nav>
+        <button
+          type="button"
+          onClick={() => setMenuOpen(true)}
+          className="flex w-full min-h-[48px] items-center justify-center gap-2.5 rounded-xl border border-border bg-canvas px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-accent/40"
+          aria-label="Open navigation menu"
+          aria-expanded={menuOpen}
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
+            <path d="M3 6H17M3 10H17M3 14H17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          <span className="truncate">{activeItem?.label ?? "Menu"}</span>
+        </button>
+      </div>
     </>
   );
 }

@@ -103,8 +103,8 @@ export function GridView({
         onAddRegular={onAddRegular}
       />
 
-      <div className="grid gap-5 xl:grid-cols-5">
-        <div className="xl:col-span-3">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-5">
+        <div className="min-w-0 xl:col-span-3">
           <ExtraTasksPanel
             dateKey={selectedDate}
             tasks={extraTasks}
@@ -118,7 +118,7 @@ export function GridView({
             onOpenDrawer={onAddExtra}
           />
         </div>
-        <div className="xl:col-span-2">
+        <div className="min-w-0 xl:col-span-2">
           <TodoList
             items={stats?.todoItems ?? []}
             onToggleScheduled={onToggleScheduledFromTodo}

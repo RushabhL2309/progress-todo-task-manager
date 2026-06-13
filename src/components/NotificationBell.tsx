@@ -121,7 +121,7 @@ export function NotificationBell({ onNavigate, onToast }: NotificationBellProps)
   return (
     <div className="flex items-center gap-2">
       {count === 0 && (
-        <span className="rounded-full border border-green-200 bg-green-50 px-2.5 py-1 text-[10px] font-medium text-green-700 sm:text-xs">
+        <span className="hidden rounded-full border border-green-200 bg-green-50 px-2.5 py-1 text-[10px] font-medium text-green-700 sm:inline sm:text-xs">
           All caught up
         </span>
       )}

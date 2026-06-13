@@ -54,7 +54,7 @@ export function ExtraTasksPanel({
   }
 
   return (
-    <div className={`card ${compact ? "border-extra/15" : "border-extra/20"} p-4 sm:p-5`}>
+    <div className={`card min-w-0 overflow-hidden ${compact ? "border-extra/15" : "border-extra/20"} p-4 sm:p-5`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2">
           <span className="mt-0.5 rounded-md bg-extra-light px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-extra">
@@ -76,12 +76,12 @@ export function ExtraTasksPanel({
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className={`${compact ? "mt-3" : "mt-4"} space-y-2`}>
+      <form onSubmit={handleSubmit} className={`${compact ? "mt-3" : "mt-4"} min-w-0 space-y-2`}>
           {activeProjects.length > 0 && (
             <select
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
-              className="input-field text-sm"
+              className="input-field max-w-full text-sm"
               disabled={submitting}
             >
               <option value="">No project — one-off extra</option>
@@ -92,7 +92,7 @@ export function ExtraTasksPanel({
               ))}
             </select>
           )}
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
             <input
               type="text"
               value={name}
@@ -102,10 +102,10 @@ export function ExtraTasksPanel({
                   ? "Today's goal for this project…"
                   : "Add a one-off task for this day"
               }
-              className="input-field flex-1"
+              className="input-field min-w-0 flex-1"
               disabled={submitting}
             />
-            <button type="submit" className="btn-primary shrink-0" disabled={submitting || !name.trim()}>
+            <button type="submit" className="btn-primary w-full shrink-0 sm:w-auto" disabled={submitting || !name.trim()}>
               Add
             </button>
           </div>
