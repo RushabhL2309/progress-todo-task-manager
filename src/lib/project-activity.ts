@@ -61,8 +61,7 @@ function overdueActivities(items: ProjectItemDTO[]): ProjectActivityDTO[] {
 export function mergeProjectTimeline(
   activities: ProjectActivityDTO[],
   updates: ProjectUpdateDTO[],
-  items: ProjectItemDTO[],
-  userNames: Record<string, string>
+  items: ProjectItemDTO[]
 ): ProjectActivityDTO[] {
   const fromUpdates: ProjectActivityDTO[] = updates.map((u) => ({
     id: `update-${u.id}`,

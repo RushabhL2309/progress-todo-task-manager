@@ -57,7 +57,7 @@ export async function GET(
         doc.itemId ? itemTitleMap[doc.itemId.toString()] ?? null : null
       )
     );
-    const activities = mergeProjectTimeline(storedActivities, updateDTOs, itemDTOs, userNames);
+    const activities = mergeProjectTimeline(storedActivities, updateDTOs, itemDTOs);
 
     return NextResponse.json({
       project: toProjectDTO(project, itemDTOs),

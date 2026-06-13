@@ -21,6 +21,18 @@ function newId(prefix: string, n: number) {
   return `${prefix}-${n}`;
 }
 
+function demoItem(
+  partial: Omit<ProjectItemDTO, "assignedUserId" | "createdBy" | "completionNote"> &
+    Partial<Pick<ProjectItemDTO, "assignedUserId" | "createdBy" | "completionNote">>
+): ProjectItemDTO {
+  return {
+    assignedUserId: null,
+    createdBy: null,
+    completionNote: "",
+    ...partial,
+  };
+}
+
 function buildSeed(): { projects: DemoProject[]; nextId: number } {
   const today = toDateKey(new Date());
   const projects: DemoProject[] = [
@@ -35,7 +47,7 @@ function buildSeed(): { projects: DemoProject[]; nextId: number } {
         updatedAt: new Date().toISOString(),
       } as ProjectDTO,
       items: [
-        {
+        demoItem({
           id: "demo-pi-1",
           projectId: "demo-proj-1",
           title: "Vercel production deploy",
@@ -45,8 +57,8 @@ function buildSeed(): { projects: DemoProject[]; nextId: number } {
           dueDate: today,
           sortOrder: 0,
           createdAt: new Date().toISOString(),
-        },
-        {
+        }),
+        demoItem({
           id: "demo-pi-2",
           projectId: "demo-proj-1",
           title: "Projects hub UI",
@@ -56,8 +68,8 @@ function buildSeed(): { projects: DemoProject[]; nextId: number } {
           dueDate: today,
           sortOrder: 1,
           createdAt: new Date().toISOString(),
-        },
-        {
+        }),
+        demoItem({
           id: "demo-pi-3",
           projectId: "demo-proj-1",
           title: "Mobile nav overflow",
@@ -67,7 +79,7 @@ function buildSeed(): { projects: DemoProject[]; nextId: number } {
           dueDate: null,
           sortOrder: 2,
           createdAt: new Date().toISOString(),
-        },
+        }),
       ],
       updates: [
         {
@@ -92,7 +104,7 @@ function buildSeed(): { projects: DemoProject[]; nextId: number } {
         updatedAt: new Date().toISOString(),
       } as ProjectDTO,
       items: [
-        {
+        demoItem({
           id: "demo-pi-4",
           projectId: "demo-proj-2",
           title: "Export CSV reports",
@@ -102,8 +114,8 @@ function buildSeed(): { projects: DemoProject[]; nextId: number } {
           dueDate: today,
           sortOrder: 0,
           createdAt: new Date().toISOString(),
-        },
-        {
+        }),
+        demoItem({
           id: "demo-pi-5",
           projectId: "demo-proj-2",
           title: "Chart loading slow",
@@ -113,7 +125,7 @@ function buildSeed(): { projects: DemoProject[]; nextId: number } {
           dueDate: null,
           sortOrder: 1,
           createdAt: new Date().toISOString(),
-        },
+        }),
       ],
       updates: [],
     },
@@ -171,7 +183,7 @@ export const demoProjectsStore = {
       updates: [...p.updates].sort(
         (a, b) => b.createdAt.localeCompare(a.createdAt)
       ),
-      activities: mergeProjectTimeline([], p.updates, p.items, {}),
+      activities: mergeProjectTimeline([], p.updates, p.items),
     };
   },
 
@@ -220,7 +232,7 @@ export const demoProjectsStore = {
   ): ProjectItemDTO | null {
     const p = getStore().projects.find((x) => x.project.id === projectId);
     if (!p) return null;
-    const item: ProjectItemDTO = {
+    const item = demoItem({
       id: newId("demo-pi", getStore().nextId++),
       projectId,
       title: data.title,
@@ -230,9 +242,7 @@ export const demoProjectsStore = {
       dueDate: data.dueDate ?? null,
       sortOrder: p.items.length,
       createdAt: new Date().toISOString(),
-      assignedUserId: null,
-      createdBy: null,
-    };
+    });
     p.items.push(item);
     syncCounts(p);
     return item;

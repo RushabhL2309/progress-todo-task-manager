@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/api-auth";
 import { getRequestUser } from "@/lib/request-user";
 import { connectDB } from "@/lib/mongodb";
 import { toUserDTO } from "@/lib/user-serializers";

@@ -111,8 +111,6 @@ export function TrackerApp() {
     [applyBootstrap, fetchBootstrap, user]
   );
 
-  // Back-compat aliases (older bundles / callbacks may still reference these names)
-  const refreshAll = refreshData;
   const refreshQuiet = refreshData;
 
   useEffect(() => {
@@ -350,6 +348,7 @@ export function TrackerApp() {
       .then((res) => (res.ok ? res.json() : []))
       .then((data: ProjectDTO[]) => setProjects(data))
       .catch(() => setProjects([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   const pageTitle = pageLabel(page);

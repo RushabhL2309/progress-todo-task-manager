@@ -19,6 +19,7 @@ async function listWithStats(userId: string, role: string) {
   });
   const itemsByProject = new Map<string, ReturnType<typeof toProjectItemDTO>[]>();
   for (const item of allItems) {
+    if (!item.projectId) continue;
     const pid = item.projectId.toString();
     const list = itemsByProject.get(pid) ?? [];
     list.push(toProjectItemDTO(item));

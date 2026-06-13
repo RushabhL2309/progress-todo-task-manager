@@ -29,7 +29,6 @@ export function ProjectsView({ onWorkLogged }: ProjectsViewProps) {
   const [projects, setProjects] = useState<ProjectDTO[]>([]);
   const [detail, setDetail] = useState<ProjectDetailDTO | null>(null);
   const [listLoading, setListLoading] = useState(true);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [createMode, setCreateMode] = useState<CreateMode>("new");
@@ -91,13 +90,9 @@ export function ProjectsView({ onWorkLogged }: ProjectsViewProps) {
       return;
     }
     let cancelled = false;
-    setDetailLoading(true);
     loadDetail(selectedId)
       .then((d) => {
         if (!cancelled) setDetail(d);
-      })
-      .finally(() => {
-        if (!cancelled) setDetailLoading(false);
       });
     return () => {
       cancelled = true;

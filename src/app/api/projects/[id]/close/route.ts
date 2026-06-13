@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import mongoose from "mongoose";
 import { requireModule } from "@/lib/api-auth";
 import { connectDB } from "@/lib/mongodb";
 import { canAccessProject } from "@/lib/permissions";

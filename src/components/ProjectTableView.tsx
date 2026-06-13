@@ -1,6 +1,6 @@
 "use client";
 
-import { format, formatDistanceToNow, parseISO } from "date-fns";
+import { formatDistanceToNow, parseISO } from "date-fns";
 import { formatDeadlineLabel } from "@/lib/project-stats";
 import type { ProjectDTO } from "@/lib/types";
 

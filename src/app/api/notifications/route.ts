@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { requireAuth, requireMaster } from "@/lib/api-auth";
+import { requireAuth } from "@/lib/api-auth";
 import type { AppNotification } from "@/lib/auth-types";
 import { connectDB } from "@/lib/mongodb";
 import { clientAccessFilter, hasModule, projectAccessFilter } from "@/lib/permissions";
@@ -79,7 +79,7 @@ export async function GET(request: Request) {
     }
 
     for (const item of projectItems) {
-      if (!item.dueDate) continue;
+      if (!item.dueDate || !item.projectId) continue;
       const overdue = item.dueDate < now;
       const dueToday = item.dueDate === now;
       if (overdue || dueToday) {

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import {
   createSessionToken,
-  hashPassword,
   masterModules,
   sessionCookieOptions,
   SESSION_COOKIE,

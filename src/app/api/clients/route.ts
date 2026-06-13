@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { requireModule } from "@/lib/api-auth";
-import { toClientEventDTO, toClientProjectDTO } from "@/lib/client-serializers";
+import { toClientProjectDTO } from "@/lib/client-serializers";
 import { connectDB } from "@/lib/mongodb";
 import { clientAccessFilter } from "@/lib/permissions";
 import { ClientProject } from "@/models/ClientProject";
 import { ClientProjectEvent } from "@/models/ClientProjectEvent";
-import { Project } from "@/models/Project";
-import { User } from "@/models/User";
 
 async function logEvent(
   clientProjectId: mongoose.Types.ObjectId,

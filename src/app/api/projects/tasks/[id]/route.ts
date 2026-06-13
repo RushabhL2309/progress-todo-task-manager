@@ -12,9 +12,9 @@ import { canAccessTaskItem, canAssignUserToProject } from "@/lib/project-tasks";
 
 import { toProjectItemDTO } from "@/lib/project-serializers";
 
-import { Project } from "@/models/Project";
+import { Project, type ProjectDocument } from "@/models/Project";
 
-import { ProjectItem } from "@/models/ProjectItem";
+import { ProjectItem, type ProjectItemDocument } from "@/models/ProjectItem";
 
 import { TaskMessage } from "@/models/TaskMessage";
 
@@ -25,14 +25,10 @@ import type { ProjectTaskDTO, TaskMessageDTO } from "@/lib/types";
 
 
 async function enrichTaskDto(
-
-  item: Awaited<ReturnType<typeof ProjectItem.findById>>,
-
-  project: Awaited<ReturnType<typeof Project.findById>> | null
-
+  item: ProjectItemDocument,
+  project: ProjectDocument | null
 ): Promise<ProjectTaskDTO> {
-
-  const dto = toProjectItemDTO(item!);
+  const dto = toProjectItemDTO(item);
 
   let projectName: string | null = null;
 
