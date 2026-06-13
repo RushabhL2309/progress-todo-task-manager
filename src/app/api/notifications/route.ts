@@ -8,6 +8,7 @@ import { ChatGroup } from "@/models/ChatGroup";
 import { ChatMessage } from "@/models/ChatMessage";
 import { ChatRead } from "@/models/ChatRead";
 import { ClientProject } from "@/models/ClientProject";
+import { ClientReminder } from "@/models/ClientReminder";
 import { Project } from "@/models/Project";
 import { ProjectItem } from "@/models/ProjectItem";
 
@@ -44,6 +45,64 @@ export async function GET(request: Request) {
           entityId: c._id.toString(),
           severity: overdue ? "urgent" : "warning",
           createdAt: new Date().toISOString(),
+        });
+      }
+    }
+
+    const accessOr =
+      auth.user.role === "master"
+        ? []
+        : [
+            { assignedUserId: new mongoose.Types.ObjectId(uid) },
+            { createdBy: new mongoose.Types.ObjectId(uid) },
+            { assignedUserId: null, simple: true },
+          ];
+
+    const dueOr = [
+      { dueDate: { $lte: now, $nin: [null, ""] } },
+      { simple: true, $or: [{ dueDate: null }, { dueDate: "" }] },
+    ];
+
+    const reminderQuery =
+      accessOr.length > 0 ? { $and: [{ $or: accessOr }, { $or: dueOr }] } : { $or: dueOr };
+
+    const reminders = await ClientReminder.find(reminderQuery).populate(
+      "clientProjectId",
+      "name stage"
+    );
+
+    for (const r of reminders) {
+      const clientDoc = r.clientProjectId as unknown as { _id: mongoose.Types.ObjectId; name: string } | null;
+      if (!clientDoc?.name) continue;
+      const clientId = clientDoc._id.toString();
+
+      if (r.simple && !r.dueDate) {
+        items.push({
+          id: `client-rm-simple-${r._id}`,
+          type: "client_reminder",
+          title: "Reminder",
+          body: `${clientDoc.name}: ${r.title}`,
+          page: "clients",
+          entityId: clientId,
+          severity: "info",
+          createdAt: r.createdAt.toISOString(),
+        });
+        continue;
+      }
+
+      if (!r.dueDate) continue;
+      const overdue = r.dueDate < now;
+      const dueToday = r.dueDate === now;
+      if (overdue || dueToday) {
+        items.push({
+          id: `client-rm-${r._id}`,
+          type: "client_reminder",
+          title: overdue ? "Reminder overdue" : "Reminder today",
+          body: `${clientDoc.name}: ${r.title}${r.dueTime ? ` at ${r.dueTime}` : ""}`,
+          page: "clients",
+          entityId: clientId,
+          severity: overdue ? "urgent" : "warning",
+          createdAt: r.createdAt.toISOString(),
         });
       }
     }

@@ -388,6 +388,8 @@ export function TrackerApp() {
     );
   }
 
+  const showPriorityTodo = hasModule(user, "tracker") || hasModule(user, "todo");
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-canvas">
       <Toast message={toastMessage} onDone={() => setToastMessage(null)} />
@@ -428,16 +430,18 @@ export function TrackerApp() {
               </button>
             </div>
           </div>
-          <div className="rounded-2xl border border-border bg-surface/95 px-3 py-2 shadow-[0_4px_20px_rgba(26,26,26,0.06)] backdrop-blur-md">
-            <PriorityTodoCard
-              fullWidth
-              items={stats?.todoItems ?? []}
-              loading={loading}
-              onToggleScheduled={(taskId, date) => handleToggleCompletion(taskId, date, true)}
-              onToggleExtra={(id) => handleToggleExtra(id, true)}
-              onViewAll={handleViewAllTodos}
-            />
-          </div>
+          {showPriorityTodo && (
+            <div className="rounded-2xl border border-border bg-surface/95 px-3 py-2 shadow-[0_4px_20px_rgba(26,26,26,0.06)] backdrop-blur-md">
+              <PriorityTodoCard
+                fullWidth
+                items={stats?.todoItems ?? []}
+                loading={loading}
+                onToggleScheduled={(taskId, date) => handleToggleCompletion(taskId, date, true)}
+                onToggleExtra={(id) => handleToggleExtra(id, true)}
+                onViewAll={handleViewAllTodos}
+              />
+            </div>
+          )}
         </div>
 
         <main className="mx-auto max-w-6xl min-w-0 overflow-x-hidden px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:pt-2">
@@ -545,7 +549,7 @@ export function TrackerApp() {
           {page === "admin" && <AdminView />}
 
           {page === "settings" && (
-            <SettingsView user={user} />
+            <SettingsView user={user} onDemoChange={refreshQuiet} />
           )}
         </main>
       </div>

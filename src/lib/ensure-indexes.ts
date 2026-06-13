@@ -9,6 +9,7 @@ export async function ensureIndexes(): Promise<void> {
   const { User } = await import("@/models/User");
   const { ClientProject } = await import("@/models/ClientProject");
   const { ClientProjectEvent } = await import("@/models/ClientProjectEvent");
+  const { ClientReminder } = await import("@/models/ClientReminder");
   const { ChatGroup } = await import("@/models/ChatGroup");
   const { ChatMessage } = await import("@/models/ChatMessage");
   const { Completion } = await import("@/models/Completion");
@@ -32,6 +33,7 @@ export async function ensureIndexes(): Promise<void> {
     TaskMessage.createIndexes(),
     ClientProject.createIndexes(),
     ClientProjectEvent.createIndexes(),
+    ClientReminder.createIndexes(),
     ChatGroup.createIndexes(),
     ChatMessage.createIndexes(),
   ]);

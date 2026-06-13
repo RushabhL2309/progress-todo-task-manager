@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { requireModule } from "@/lib/api-auth";
-import { toClientEventDTO, toClientProjectDTO } from "@/lib/client-serializers";
+import { toClientEventDTO, toClientProjectDTO, toClientReminderDTO } from "@/lib/client-serializers";
 import { connectDB } from "@/lib/mongodb";
 import { clientAccessFilter } from "@/lib/permissions";
 import { ClientProject } from "@/models/ClientProject";
 import { ClientProjectEvent } from "@/models/ClientProjectEvent";
+import { ClientReminder } from "@/models/ClientReminder";
 import { Project } from "@/models/Project";
 import { User } from "@/models/User";
 
@@ -47,13 +48,31 @@ export async function GET(
   const events = await ClientProjectEvent.find({ clientProjectId: id })
     .sort({ createdAt: -1 })
     .limit(100);
-  const userIds = [...new Set(events.map((e) => e.userId.toString()))];
+  const reminders = await ClientReminder.find({ clientProjectId: id }).sort({ createdAt: -1 });
+
+  const userIds = [
+    ...new Set(
+      [
+        ...events.map((e) => e.userId.toString()),
+        ...reminders.flatMap((r) => [
+          r.createdBy.toString(),
+          r.assignedUserId?.toString(),
+        ]),
+      ].filter((x): x is string => Boolean(x))
+    ),
+  ];
   const users = await User.find({ _id: { $in: userIds } });
   const nameMap = Object.fromEntries(users.map((u) => [u._id.toString(), u.name]));
 
   return NextResponse.json({
     client: toClientProjectDTO(doc),
     events: events.map((e) => toClientEventDTO(e, nameMap[e.userId.toString()] ?? "User")),
+    reminders: reminders.map((r) =>
+      toClientReminderDTO(r, {
+        assigned: r.assignedUserId ? nameMap[r.assignedUserId.toString()] ?? null : null,
+        createdBy: nameMap[r.createdBy.toString()] ?? null,
+      })
+    ),
   });
 }
 

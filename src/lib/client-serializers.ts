@@ -1,6 +1,12 @@
 import type { ClientProjectDocument } from "@/models/ClientProject";
 import type { ClientProjectEventDocument } from "@/models/ClientProjectEvent";
-import type { ClientPaymentCheck, ClientProjectDTO, ClientProjectEventDTO } from "./auth-types";
+import type { ClientReminderDocument } from "@/models/ClientReminder";
+import type {
+  ClientPaymentCheck,
+  ClientProjectDTO,
+  ClientProjectEventDTO,
+  ClientReminderDTO,
+} from "./auth-types";
 
 function legacyPaymentChecks(doc: ClientProjectDocument): ClientPaymentCheck[] {
   const f = doc.paymentFlags;
@@ -57,6 +63,25 @@ export function toClientEventDTO(
     fromStage: (doc.fromStage as ClientProjectEventDTO["fromStage"]) ?? null,
     toStage: (doc.toStage as ClientProjectEventDTO["toStage"]) ?? null,
     metadata: (doc.metadata as Record<string, unknown>) ?? {},
+    createdAt: doc.createdAt.toISOString(),
+  };
+}
+
+export function toClientReminderDTO(
+  doc: ClientReminderDocument,
+  names: { assigned?: string | null; createdBy?: string | null } = {}
+): ClientReminderDTO {
+  return {
+    id: doc._id.toString(),
+    clientProjectId: doc.clientProjectId.toString(),
+    title: doc.title,
+    dueDate: doc.dueDate ?? null,
+    dueTime: doc.dueTime ?? null,
+    assignedUserId: doc.assignedUserId?.toString() ?? null,
+    assignedUserName: names.assigned ?? null,
+    simple: Boolean(doc.simple),
+    createdBy: doc.createdBy.toString(),
+    createdByName: names.createdBy ?? null,
     createdAt: doc.createdAt.toISOString(),
   };
 }

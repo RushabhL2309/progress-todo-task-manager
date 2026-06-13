@@ -21,21 +21,25 @@ export function NotificationBell({ onNavigate, onToast }: NotificationBellProps)
   const initializedRef = useRef(false);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/notifications");
-    if (!res.ok) return;
-    const data = (await res.json()) as { notifications: AppNotification[]; count: number };
-    setItems(data.notifications);
-    setCount(data.count);
+    try {
+      const res = await fetch("/api/notifications");
+      if (!res.ok) return;
+      const data = (await res.json()) as { notifications: AppNotification[]; count: number };
+      setItems(data.notifications);
+      setCount(data.count);
 
-    for (const n of data.notifications) {
-      if (!seenRef.current.has(n.id)) {
-        seenRef.current.add(n.id);
-        if (initializedRef.current) {
-          onToast(`${n.title} — ${n.body}`);
+      for (const n of data.notifications) {
+        if (!seenRef.current.has(n.id)) {
+          seenRef.current.add(n.id);
+          if (initializedRef.current) {
+            onToast(`${n.title} — ${n.body}`);
+          }
         }
       }
+      initializedRef.current = true;
+    } catch {
+      // Server offline or restarting — keep last known notifications
     }
-    initializedRef.current = true;
   }, [onToast]);
 
   useEffect(() => {
@@ -43,12 +47,15 @@ export function NotificationBell({ onNavigate, onToast }: NotificationBellProps)
   }, []);
 
   useEffect(() => {
-    load();
-    const interval = setInterval(load, 60000);
-    window.addEventListener("focus", load);
+    void load();
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") void load();
+    }, 60000);
+    const onFocus = () => void load();
+    window.addEventListener("focus", onFocus);
     return () => {
       clearInterval(interval);
-      window.removeEventListener("focus", load);
+      window.removeEventListener("focus", onFocus);
     };
   }, [load]);
 

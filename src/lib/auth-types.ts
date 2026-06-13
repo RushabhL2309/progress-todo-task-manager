@@ -96,9 +96,29 @@ export interface ChatMessageDTO {
   createdAt: string;
 }
 
+export interface ClientReminderDTO {
+  id: string;
+  clientProjectId: string;
+  title: string;
+  dueDate: string | null;
+  dueTime: string | null;
+  assignedUserId: string | null;
+  assignedUserName: string | null;
+  simple: boolean;
+  createdBy: string;
+  createdByName: string | null;
+  createdAt: string;
+}
+
 export interface AppNotification {
   id: string;
-  type: "client_followup" | "project_deadline" | "item_due" | "item_overdue" | "chat";
+  type:
+    | "client_followup"
+    | "client_reminder"
+    | "project_deadline"
+    | "item_due"
+    | "item_overdue"
+    | "chat";
   title: string;
   body: string;
   page: "clients" | "projects" | "chat";

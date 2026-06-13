@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import type { SessionUser, UserModules } from "@/lib/auth-types";
 import { effectiveModules, isMaster } from "@/lib/user-access";
 import { NavMenuDrawer } from "./NavMenuDrawer";
+import { SettingsIcon } from "./SettingsIcon";
 
 export type AppPage =
   | "grid"
@@ -143,17 +144,7 @@ const NAV: NavItem[] = [
     label: "Settings",
     shortLabel: "Settings",
     desc: "Account",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
-        <circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5" />
-        <path
-          d="M10 2.5V4.5M10 15.5V17.5M17.5 10H15.5M4.5 10H2.5M15.1 4.9L13.7 6.3M6.3 13.7L4.9 15.1M15.1 15.1L13.7 13.7M6.3 6.3L4.9 4.9"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-      </svg>
-    ),
+    icon: <SettingsIcon />,
   },
 ];
 
