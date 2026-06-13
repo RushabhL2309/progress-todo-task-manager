@@ -44,7 +44,7 @@ export function NotificationBell({ onNavigate, onToast }: NotificationBellProps)
 
   useEffect(() => {
     load();
-    const interval = setInterval(load, 20000);
+    const interval = setInterval(load, 60000);
     window.addEventListener("focus", load);
     return () => {
       clearInterval(interval);

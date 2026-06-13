@@ -3,23 +3,35 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api-client";
 import type { ClientProjectDTO, UserDTO } from "@/lib/auth-types";
+import {
+  getProjectLayoutView,
+  setProjectLayoutView,
+  type ProjectLayoutView,
+} from "@/lib/project-layout-prefs";
 import type { ProjectDTO, ProjectDetailDTO, ProjectItemType } from "@/lib/types";
+import { Drawer } from "./Drawer";
+import { LayoutViewToggle } from "./LayoutViewToggle";
 import { ProjectCard } from "./ProjectCard";
 import { ProjectDetailView } from "./ProjectDetailView";
+import { ProjectTableView } from "./ProjectTableView";
+import { ProjectTasksView } from "./ProjectTasksView";
 
 type CreateMode = "new" | "from_client";
+type ProjectsTab = "projects" | "tasks";
 
 interface ProjectsViewProps {
   onWorkLogged?: () => void;
 }
 
 export function ProjectsView({ onWorkLogged }: ProjectsViewProps) {
+  const [tab, setTab] = useState<ProjectsTab>("projects");
+  const [layoutView, setLayoutView] = useState<ProjectLayoutView>("cards");
   const [projects, setProjects] = useState<ProjectDTO[]>([]);
   const [detail, setDetail] = useState<ProjectDetailDTO | null>(null);
   const [listLoading, setListLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [showNew, setShowNew] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [createMode, setCreateMode] = useState<CreateMode>("new");
   const [linkableClients, setLinkableClients] = useState<ClientProjectDTO[]>([]);
   const [assignableUsers, setAssignableUsers] = useState<UserDTO[]>([]);
@@ -30,6 +42,21 @@ export function ProjectsView({ onWorkLogged }: ProjectsViewProps) {
   const [assignedUserIds, setAssignedUserIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setLayoutView(getProjectLayoutView());
+    const onLayoutChange = (e: Event) => {
+      const detail = (e as CustomEvent<ProjectLayoutView>).detail;
+      if (detail) setLayoutView(detail);
+    };
+    window.addEventListener("project-layout-change", onLayoutChange);
+    return () => window.removeEventListener("project-layout-change", onLayoutChange);
+  }, []);
+
+  function handleLayoutChange(view: ProjectLayoutView) {
+    setLayoutView(view);
+    setProjectLayoutView(view);
+  }
 
   const loadList = useCallback(async () => {
     const res = await apiFetch("/api/projects");
@@ -63,14 +90,22 @@ export function ProjectsView({ onWorkLogged }: ProjectsViewProps) {
       setDetail(null);
       return;
     }
+    let cancelled = false;
     setDetailLoading(true);
     loadDetail(selectedId)
-      .then(setDetail)
-      .finally(() => setDetailLoading(false));
+      .then((d) => {
+        if (!cancelled) setDetail(d);
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [selectedId, loadDetail]);
 
   useEffect(() => {
-    if (!showNew) return;
+    if (!drawerOpen) return;
     Promise.all([
       apiFetch("/api/clients/linkable"),
       apiFetch("/api/admin/users/assignable"),
@@ -78,7 +113,7 @@ export function ProjectsView({ onWorkLogged }: ProjectsViewProps) {
       if (cRes.ok) setLinkableClients(await cRes.json());
       if (uRes.ok) setAssignableUsers(await uRes.json());
     });
-  }, [showNew]);
+  }, [drawerOpen]);
 
   useEffect(() => {
     if (createMode !== "from_client" || !selectedClientId) return;
@@ -89,6 +124,15 @@ export function ProjectsView({ onWorkLogged }: ProjectsViewProps) {
       setAssignedUserIds(client.assignedUserIds);
     }
   }, [createMode, selectedClientId, linkableClients]);
+
+  function resetProjectForm() {
+    setNewName("");
+    setNewDesc("");
+    setNewDeadline("");
+    setAssignedUserIds([]);
+    setSelectedClientId("");
+    setCreateMode("new");
+  }
 
   async function handleCreateProject(e: FormEvent) {
     e.preventDefault();
@@ -114,12 +158,8 @@ export function ProjectsView({ onWorkLogged }: ProjectsViewProps) {
       if (!res.ok) return;
       const project = (await res.json()) as ProjectDTO;
       setProjects((p) => [project, ...p]);
-      setNewName("");
-      setNewDesc("");
-      setNewDeadline("");
-      setAssignedUserIds([]);
-      setSelectedClientId("");
-      setShowNew(false);
+      resetProjectForm();
+      setDrawerOpen(false);
       setSelectedId(project.id);
     } finally {
       setSubmitting(false);
@@ -168,11 +208,18 @@ export function ProjectsView({ onWorkLogged }: ProjectsViewProps) {
     await refreshDetail();
   }
 
-  if (selectedId && detail) {
+  if (selectedId) {
+    if (!detail || detail.project.id !== selectedId) {
+      return (
+        <div className="min-w-0 space-y-4">
+          <div className="h-48 animate-pulse rounded-xl bg-border/30" />
+        </div>
+      );
+    }
     return (
       <ProjectDetailView
         detail={detail}
-        loading={detailLoading}
+        loading={false}
         onBack={() => setSelectedId(null)}
         onAddItem={handleAddItem}
         onCompleteWork={handleCompleteWork}
@@ -193,28 +240,96 @@ export function ProjectsView({ onWorkLogged }: ProjectsViewProps) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold text-ink sm:text-2xl">Projects</h1>
-          <p className="mt-1 text-sm text-muted">From daily client or new — assign users to share access</p>
+          <p className="mt-1 text-sm text-muted">Manage projects and all related tasks in one place</p>
         </div>
-        <button type="button" onClick={() => setShowNew((v) => !v)} className="btn-primary shrink-0">
-          + Add project
-        </button>
+        {tab === "projects" && (
+          <button type="button" onClick={() => setDrawerOpen(true)} className="btn-primary shrink-0">
+            + Add project
+          </button>
+        )}
       </div>
 
-      <input
-        type="search"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search projects…"
-        className="input-field max-w-md text-sm"
-      />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="inline-flex rounded-lg border border-border bg-canvas p-1">
+          <button
+            type="button"
+            onClick={() => setTab("projects")}
+            className={`rounded-md px-4 py-2 text-sm font-medium ${
+              tab === "projects" ? "bg-surface text-accent shadow-sm" : "text-muted"
+            }`}
+          >
+            Projects
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("tasks")}
+            className={`rounded-md px-4 py-2 text-sm font-medium ${
+              tab === "tasks" ? "bg-surface text-accent shadow-sm" : "text-muted"
+            }`}
+          >
+            Tasks
+          </button>
+        </div>
+        {tab === "projects" && <LayoutViewToggle value={layoutView} onChange={handleLayoutChange} />}
+      </div>
 
-      {showNew && (
-        <form onSubmit={handleCreateProject} className="card space-y-4 p-4 sm:p-5">
-          <div className="inline-flex rounded-lg border border-border bg-canvas p-1">
+      {tab === "tasks" ? (
+        <ProjectTasksView
+          projects={projects}
+          onOpenProject={(id) => {
+            setTab("projects");
+            setSelectedId(id);
+          }}
+        />
+      ) : (
+        <>
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search projects…"
+            className="input-field max-w-md text-sm"
+          />
+
+          {listLoading && projects.length === 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-40 animate-pulse rounded-xl border border-border bg-border/20" />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="card p-10 text-center">
+              <p className="text-muted">
+                {projects.length === 0 ? "No projects yet." : "No projects match your search."}
+              </p>
+            </div>
+          ) : layoutView === "table" ? (
+            <ProjectTableView projects={filtered} onSelect={setSelectedId} />
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {filtered.map((p) => (
+                <ProjectCard key={p.id} project={p} onClick={() => setSelectedId(p.id)} />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      <Drawer
+        open={drawerOpen}
+        onClose={() => {
+          setDrawerOpen(false);
+          resetProjectForm();
+        }}
+        title="Add project"
+        subtitle="From daily client or create new"
+      >
+        <form onSubmit={handleCreateProject} className="space-y-4">
+          <div className="inline-flex w-full rounded-lg border border-border bg-canvas p-1">
             <button
               type="button"
               onClick={() => setCreateMode("from_client")}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium ${
+              className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium ${
                 createMode === "from_client" ? "bg-surface text-accent shadow-sm" : "text-muted"
               }`}
             >
@@ -223,7 +338,7 @@ export function ProjectsView({ onWorkLogged }: ProjectsViewProps) {
             <button
               type="button"
               onClick={() => setCreateMode("new")}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium ${
+              className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium ${
                 createMode === "new" ? "bg-surface text-accent shadow-sm" : "text-muted"
               }`}
             >
@@ -269,8 +384,8 @@ export function ProjectsView({ onWorkLogged }: ProjectsViewProps) {
             value={newDesc}
             onChange={(e) => setNewDesc(e.target.value)}
             placeholder="Description (optional)"
-            rows={2}
-            className="input-field min-h-[72px]"
+            rows={3}
+            className="input-field min-h-[80px]"
           />
 
           <div>
@@ -279,7 +394,7 @@ export function ProjectsView({ onWorkLogged }: ProjectsViewProps) {
               type="date"
               value={newDeadline}
               onChange={(e) => setNewDeadline(e.target.value)}
-              className="input-field !w-auto text-sm"
+              className="input-field text-sm"
             />
           </div>
 
@@ -310,35 +425,28 @@ export function ProjectsView({ onWorkLogged }: ProjectsViewProps) {
             )}
           </div>
 
-          <button
-            type="submit"
-            className="btn-primary"
-            disabled={submitting || (createMode === "from_client" && !selectedClientId)}
-          >
-            {submitting ? "Creating…" : "Create project"}
-          </button>
+          <div className="flex gap-2 pt-2">
+            <button
+              type="submit"
+              className="btn-primary flex-1"
+              disabled={submitting || (createMode === "from_client" && !selectedClientId)}
+            >
+              {submitting ? "Creating…" : "Create project"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDrawerOpen(false);
+                resetProjectForm();
+              }}
+              className="btn-ghost flex-1"
+              disabled={submitting}
+            >
+              Cancel
+            </button>
+          </div>
         </form>
-      )}
-
-      {listLoading && projects.length === 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-40 animate-pulse rounded-xl border border-border bg-border/20" />
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="card p-10 text-center">
-          <p className="text-muted">
-            {projects.length === 0 ? "No projects yet." : "No projects match your search."}
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((p) => (
-            <ProjectCard key={p.id} project={p} onClick={() => setSelectedId(p.id)} />
-          ))}
-        </div>
-      )}
+      </Drawer>
     </div>
   );
 }

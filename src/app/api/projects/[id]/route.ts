@@ -6,9 +6,13 @@ import { demoProjectsStore } from "@/lib/demo-projects-store";
 import { connectDB } from "@/lib/mongodb";
 import { canAccessProject } from "@/lib/permissions";
 import { toProjectDTO, toProjectItemDTO, toProjectUpdateDTO } from "@/lib/project-serializers";
+import { mergeProjectTimeline, toProjectActivityDTO } from "@/lib/project-activity";
 import { Project } from "@/models/Project";
 import { ProjectItem } from "@/models/ProjectItem";
 import { ProjectUpdate } from "@/models/ProjectUpdate";
+import { ProjectActivity } from "@/models/ProjectActivity";
+import { TaskMessage } from "@/models/TaskMessage";
+import { User } from "@/models/User";
 
 export async function GET(
   request: Request,
@@ -32,17 +36,34 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const [items, updates] = await Promise.all([
+    const [items, updates, activityDocs] = await Promise.all([
       ProjectItem.find({ projectId: id }).sort({ sortOrder: 1, createdAt: 1 }),
       ProjectUpdate.find({ projectId: id }).sort({ createdAt: -1 }),
+      ProjectActivity.find({ projectId: id }).sort({ createdAt: -1 }),
     ]);
 
     const itemDTOs = items.map(toProjectItemDTO);
+    const updateDTOs = updates.map(toProjectUpdateDTO);
+
+    const userIds = [...new Set(activityDocs.map((a) => a.userId.toString()))];
+    const users = userIds.length > 0 ? await User.find({ _id: { $in: userIds } }) : [];
+    const userNames = Object.fromEntries(users.map((u) => [u._id.toString(), u.name]));
+    const itemTitleMap = Object.fromEntries(itemDTOs.map((i) => [i.id, i.title]));
+
+    const storedActivities = activityDocs.map((doc) =>
+      toProjectActivityDTO(
+        doc,
+        userNames[doc.userId.toString()] ?? "User",
+        doc.itemId ? itemTitleMap[doc.itemId.toString()] ?? null : null
+      )
+    );
+    const activities = mergeProjectTimeline(storedActivities, updateDTOs, itemDTOs, userNames);
 
     return NextResponse.json({
       project: toProjectDTO(project, itemDTOs),
       items: itemDTOs,
-      updates: updates.map(toProjectUpdateDTO),
+      updates: updateDTOs,
+      activities,
     });
   } catch (error) {
     console.error("GET /api/projects/[id]", error);
@@ -115,9 +136,13 @@ export async function DELETE(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
+    const itemIds = await ProjectItem.find({ projectId: id }).distinct("_id");
+
     await Promise.all([
       ProjectItem.deleteMany({ projectId: id }),
       ProjectUpdate.deleteMany({ projectId: id }),
+      ProjectActivity.deleteMany({ projectId: id }),
+      TaskMessage.deleteMany({ itemId: { $in: itemIds } }),
       Project.findByIdAndDelete(id),
     ]);
     return NextResponse.json({ success: true });

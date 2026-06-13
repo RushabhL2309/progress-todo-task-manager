@@ -62,6 +62,17 @@ export function ProjectProgressSummary({ project, compact }: ProjectProgressSumm
           <p className="text-sm text-muted">
             {project.resolvedCount} of {project.totalItems} items done
           </p>
+          {project.deadline && (
+            <p
+              className={`text-xs font-medium ${
+                project.deadline < new Date().toISOString().slice(0, 10)
+                  ? "text-red-600"
+                  : "text-muted"
+              }`}
+            >
+              Project due {format(parseISO(project.deadline), "d MMM yyyy")}
+            </p>
+          )}
           {project.overdueCount > 0 && (
             <p className="mt-1 text-xs font-medium text-red-600">
               {project.overdueCount} overdue

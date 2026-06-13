@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addDays } from "date-fns";
 import { apiFetch } from "@/lib/api-client";
@@ -57,6 +57,7 @@ export function TrackerApp() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const hasBootstrapRef = useRef(false);
   const periodColumns = getColumnsForView(view, parseDateKey(anchorDate));
   const rangeFrom = periodColumns[0]?.dateKey ?? anchorDate;
   const rangeTo = periodColumns[periodColumns.length - 1]?.dateKey ?? anchorDate;
@@ -92,27 +93,27 @@ export function TrackerApp() {
     []
   );
 
-  const refreshAll = useCallback(async () => {
-    if (!user || !hasModule(user, "tracker")) return;
-    setLoading(true);
-    setError(null);
-    try {
-      applyBootstrap(await fetchBootstrap());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  }, [applyBootstrap, fetchBootstrap, user]);
+  const refreshData = useCallback(
+    async (options?: { withLoading?: boolean }) => {
+      if (!user || !hasModule(user, "tracker")) return;
+      const withLoading = options?.withLoading ?? false;
+      if (withLoading) setLoading(true);
+      setError(null);
+      try {
+        applyBootstrap(await fetchBootstrap());
+        hasBootstrapRef.current = true;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Something went wrong");
+      } finally {
+        if (withLoading) setLoading(false);
+      }
+    },
+    [applyBootstrap, fetchBootstrap, user]
+  );
 
-  const refreshQuiet = useCallback(async () => {
-    if (!user || !hasModule(user, "tracker")) return;
-    try {
-      applyBootstrap(await fetchBootstrap());
-    } catch {
-      /* keep optimistic state on quiet refresh failure */
-    }
-  }, [applyBootstrap, fetchBootstrap, user]);
+  // Back-compat aliases (older bundles / callbacks may still reference these names)
+  const refreshAll = refreshData;
+  const refreshQuiet = refreshData;
 
   useEffect(() => {
     async function loadSession(): Promise<SessionUser | null | undefined> {
@@ -152,7 +153,19 @@ export function TrackerApp() {
       if (!sessionUser) return;
 
       setUser((prev) => {
-        if (prev && JSON.stringify(prev.modules) !== JSON.stringify(sessionUser.modules)) {
+        if (!sessionUser) return prev;
+        if (!prev) return sessionUser;
+        const modulesSame =
+          JSON.stringify(prev.modules) === JSON.stringify(sessionUser.modules);
+        if (
+          prev.id === sessionUser.id &&
+          prev.name === sessionUser.name &&
+          prev.role === sessionUser.role &&
+          modulesSame
+        ) {
+          return prev;
+        }
+        if (!modulesSame) {
           setPage((current) =>
             canAccessPage(sessionUser, current) ? current : defaultPageForUser(sessionUser)
           );
@@ -161,7 +174,7 @@ export function TrackerApp() {
       });
     }
 
-    const interval = setInterval(refreshSession, 15000);
+    const interval = setInterval(refreshSession, 60000);
     window.addEventListener("focus", refreshSession);
     return () => {
       clearInterval(interval);
@@ -170,14 +183,22 @@ export function TrackerApp() {
   }, [router]);
 
   useEffect(() => {
-    if (user) refreshAll();
-  }, [user, refreshAll]);
+    if (!user) return;
+    refreshData({ withLoading: !hasBootstrapRef.current });
+    // Only run when the signed-in user changes — not on every date/view refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   useEffect(() => {
-    const onDemoChange = () => refreshAll();
+    if (!user || !hasBootstrapRef.current) return;
+    refreshData();
+  }, [view, anchorDate, selectedDate, todoDate, refreshData, user]);
+
+  useEffect(() => {
+    const onDemoChange = () => refreshQuiet();
     window.addEventListener("demo-mode-change", onDemoChange);
     return () => window.removeEventListener("demo-mode-change", onDemoChange);
-  }, [refreshAll]);
+  }, [refreshQuiet]);
 
   useEffect(() => {
     if (view === "day") setSelectedDate(anchorDate);
@@ -206,13 +227,13 @@ export function TrackerApp() {
       body: JSON.stringify({ name }),
     });
     if (!res.ok) throw new Error("Failed to add task");
-    await refreshAll();
+    await refreshData();
   }
 
   async function handleDeleteScheduled(id: string) {
     const res = await apiFetch(`/api/tasks/scheduled/${id}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Failed to remove task");
-    await refreshAll();
+    await refreshData();
   }
 
   async function handleToggleCompletion(taskId: string, dateKey: string, completed: boolean) {
@@ -233,20 +254,12 @@ export function TrackerApp() {
         body: JSON.stringify({ taskId, date: dateKey, completed }),
       });
       if (!res.ok) throw new Error("Failed");
-      await refreshQuiet();
+      await refreshData();
     } catch {
       setGrid(prevGrid);
-      await refreshQuiet();
+      await refreshData();
     }
   }
-
-  useEffect(() => {
-    if (!user || !hasModule(user, "projects")) return;
-    apiFetch("/api/projects")
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data: ProjectDTO[]) => setProjects(data))
-      .catch(() => setProjects([]));
-  }, [user]);
 
   async function handleAddExtra(name: string, date: string, projectId?: string) {
     const res = await apiFetch("/api/tasks/extra", {
@@ -255,8 +268,7 @@ export function TrackerApp() {
       body: JSON.stringify({ name, date, projectId: projectId || undefined }),
     });
     if (!res.ok) throw new Error("Failed to add extra task");
-    if (date === selectedDate) await refreshAll();
-    else await refreshQuiet();
+    await refreshData();
   }
 
   async function handleToggleExtra(id: string, completed: boolean) {
@@ -276,18 +288,18 @@ export function TrackerApp() {
         body: JSON.stringify({ completed }),
       });
       if (!res.ok) throw new Error("Failed");
-      await refreshQuiet();
+      await refreshData();
     } catch {
       setExtraTasks(prevExtras);
       setAllExtras(prevAll);
-      await refreshQuiet();
+      await refreshData();
     }
   }
 
   async function handleDeleteExtra(id: string) {
     const res = await apiFetch(`/api/tasks/extra/${id}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Failed to delete extra task");
-    await refreshAll();
+    await refreshData();
   }
 
   async function handleEditExtra(id: string, name: string) {
@@ -297,7 +309,7 @@ export function TrackerApp() {
       body: JSON.stringify({ name }),
     });
     if (!res.ok) throw new Error("Failed to update task");
-    await refreshAll();
+    await refreshData();
   }
 
   async function handleCarryForward(fromDate: string) {
@@ -308,7 +320,7 @@ export function TrackerApp() {
     });
     if (!res.ok) throw new Error("Failed to carry forward");
     const data = (await res.json()) as { carried: number; toDate?: string };
-    await refreshAll();
+    await refreshData();
     if (data.toDate) setTodoDate(data.toDate);
     return { carried: data.carried };
   }
@@ -338,17 +350,13 @@ export function TrackerApp() {
       .then((res) => (res.ok ? res.json() : []))
       .then((data: ProjectDTO[]) => setProjects(data))
       .catch(() => setProjects([]));
-  }, [user]);
+  }, [user?.id]);
 
   const pageTitle = pageLabel(page);
 
   const routinePending = scheduledTasks
     .filter((t) => !grid?.completions[completionKey(t.id, todoDate)])
     .map((t) => ({ id: t.id, name: t.name }));
-
-  function handleDemoChange() {
-    refreshAll();
-  }
 
   function handleViewAllTodos() {
     const first = stats?.todoItems[0];
@@ -538,7 +546,7 @@ export function TrackerApp() {
           {page === "admin" && <AdminView />}
 
           {page === "settings" && (
-            <SettingsView user={user} onDemoChange={handleDemoChange} />
+            <SettingsView user={user} />
           )}
         </main>
       </div>

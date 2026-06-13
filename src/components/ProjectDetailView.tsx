@@ -1,7 +1,9 @@
 "use client";
 
+import { format, parseISO } from "date-fns";
 import { useState } from "react";
 import type { ProjectDetailDTO } from "@/lib/types";
+import { ProjectActivityTab } from "./ProjectActivityTab";
 import { ProjectCompleteModal } from "./ProjectCompleteModal";
 import { ProjectCloseModal } from "./ProjectCloseModal";
 import { ProjectInternalDashboard } from "./ProjectInternalDashboard";
@@ -9,7 +11,7 @@ import { ProjectIssuesTab } from "./ProjectIssuesTab";
 import { ProjectProgressSummary } from "./ProjectProgressSummary";
 import type { ProjectItemType } from "@/lib/types";
 
-type ProjectTab = "dashboard" | "issues";
+type ProjectTab = "dashboard" | "issues" | "activity";
 
 interface ProjectDetailViewProps {
   detail: ProjectDetailDTO;
@@ -46,6 +48,9 @@ export function ProjectDetailView({
 
   const openItems = detail.items.filter((i) => i.status === "open");
   const { project } = detail;
+  const today = new Date().toISOString().slice(0, 10);
+  const projectDueOverdue = Boolean(project.deadline && project.deadline < today);
+  const projectDueToday = project.deadline === today;
 
   function openComplete(itemId?: string) {
     setCompleteItemId(itemId ?? null);
@@ -55,6 +60,7 @@ export function ProjectDetailView({
   const tabs: { id: ProjectTab; label: string }[] = [
     { id: "dashboard", label: "Dashboard" },
     { id: "issues", label: "Issues & features" },
+    { id: "activity", label: "Activity" },
   ];
 
   return (
@@ -82,6 +88,21 @@ export function ProjectDetailView({
                 <h1 className="text-lg font-semibold text-ink sm:text-xl">{project.name}</h1>
                 {project.description && (
                   <p className="text-xs text-muted sm:text-sm">{project.description}</p>
+                )}
+                {project.deadline && (
+                  <p
+                    className={`mt-1 text-xs font-medium ${
+                      projectDueOverdue
+                        ? "text-red-600"
+                        : projectDueToday
+                          ? "text-accent"
+                          : "text-muted"
+                    }`}
+                  >
+                    Due {format(parseISO(project.deadline), "d MMM yyyy")}
+                    {projectDueOverdue && " · Overdue"}
+                    {projectDueToday && " · Today"}
+                  </p>
                 )}
               </div>
             </div>
@@ -136,6 +157,8 @@ export function ProjectDetailView({
             onLogWork={() => openComplete()}
           />
         )}
+
+        {tab === "activity" && <ProjectActivityTab activities={detail.activities ?? []} />}
       </div>
 
       <ProjectCompleteModal

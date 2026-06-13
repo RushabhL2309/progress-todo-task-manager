@@ -1,3 +1,4 @@
+import { mergeProjectTimeline } from "./project-activity";
 import { toDateKey } from "./dates";
 import { projectDTOFromStats } from "./project-serializers";
 import type {
@@ -170,6 +171,7 @@ export const demoProjectsStore = {
       updates: [...p.updates].sort(
         (a, b) => b.createdAt.localeCompare(a.createdAt)
       ),
+      activities: mergeProjectTimeline([], p.updates, p.items, {}),
     };
   },
 
@@ -228,6 +230,8 @@ export const demoProjectsStore = {
       dueDate: data.dueDate ?? null,
       sortOrder: p.items.length,
       createdAt: new Date().toISOString(),
+      assignedUserId: null,
+      createdBy: null,
     };
     p.items.push(item);
     syncCounts(p);

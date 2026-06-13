@@ -16,6 +16,8 @@ export async function ensureIndexes(): Promise<void> {
   const { Project } = await import("@/models/Project");
   const { ProjectItem } = await import("@/models/ProjectItem");
   const { ProjectUpdate } = await import("@/models/ProjectUpdate");
+  const { ProjectActivity } = await import("@/models/ProjectActivity");
+  const { TaskMessage } = await import("@/models/TaskMessage");
   const { ScheduledTask } = await import("@/models/ScheduledTask");
 
   await Promise.all([
@@ -26,6 +28,8 @@ export async function ensureIndexes(): Promise<void> {
     Project.createIndexes(),
     ProjectItem.createIndexes(),
     ProjectUpdate.createIndexes(),
+    ProjectActivity.createIndexes(),
+    TaskMessage.createIndexes(),
     ClientProject.createIndexes(),
     ClientProjectEvent.createIndexes(),
     ChatGroup.createIndexes(),

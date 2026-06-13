@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { isDemoMode } from "@/lib/demo-mode";
 import { demoProjectsStore } from "@/lib/demo-projects-store";
 import { demoStore } from "@/lib/demo-store";
+import { requireModule } from "@/lib/api-auth";
 import { connectDB } from "@/lib/mongodb";
+import { logProjectActivity } from "@/lib/project-activity";
 import { toExtraTaskDTO } from "@/lib/serializers";
 import { toProjectUpdateDTO } from "@/lib/project-serializers";
 import { ExtraTask } from "@/models/ExtraTask";
@@ -13,6 +15,9 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireModule(request, "projects");
+  if (auth.error) return auth.error;
+
   try {
     const { id: projectId } = await params;
     const body = await request.json();
@@ -83,6 +88,14 @@ export async function POST(
       description,
       resolvedItemIds,
       linkedExtraTaskId,
+    });
+
+    await logProjectActivity({
+      projectId,
+      userId: auth.user.id,
+      action: "work_logged",
+      description,
+      metadata: { date, resolvedItemIds },
     });
 
     const linkedDoc = linkedExtraTaskId

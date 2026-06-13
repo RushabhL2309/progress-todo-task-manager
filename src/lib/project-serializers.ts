@@ -51,7 +51,7 @@ export function projectDTOFromStats(
 export function toProjectItemDTO(doc: ProjectItemDocument): ProjectItemDTO {
   return {
     id: doc._id.toString(),
-    projectId: doc.projectId.toString(),
+    projectId: doc.projectId?.toString() ?? null,
     title: doc.title,
     description: doc.description ?? "",
     type: doc.type as ProjectItemDTO["type"],
@@ -59,6 +59,9 @@ export function toProjectItemDTO(doc: ProjectItemDocument): ProjectItemDTO {
     dueDate: doc.dueDate ?? null,
     sortOrder: doc.sortOrder,
     createdAt: doc.createdAt.toISOString(),
+    assignedUserId: doc.assignedUserId?.toString() ?? null,
+    createdBy: doc.createdBy?.toString() ?? null,
+    completionNote: doc.completionNote ?? "",
   };
 }
 

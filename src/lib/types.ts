@@ -62,13 +62,53 @@ export interface ProjectDTO {
 
 export interface ProjectItemDTO {
   id: string;
-  projectId: string;
+  projectId: string | null;
   title: string;
   description: string;
   type: ProjectItemType;
   status: ProjectItemStatus;
   dueDate: string | null;
   sortOrder: number;
+  createdAt: string;
+  assignedUserId: string | null;
+  createdBy: string | null;
+  completionNote: string;
+}
+
+export interface ProjectTaskDTO extends ProjectItemDTO {
+  projectName: string | null;
+  assignedUserName: string | null;
+  createdByName: string | null;
+}
+
+export type ProjectActivityAction =
+  | "task_created"
+  | "task_completed"
+  | "task_reopened"
+  | "task_assigned"
+  | "task_overdue"
+  | "work_logged"
+  | "project_closed";
+
+export interface ProjectActivityDTO {
+  id: string;
+  projectId: string;
+  userId: string;
+  userName: string;
+  itemId: string | null;
+  itemTitle: string | null;
+  action: ProjectActivityAction;
+  description: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface TaskMessageDTO {
+  id: string;
+  itemId: string;
+  senderId: string;
+  senderName: string;
+  text: string;
   createdAt: string;
 }
 
@@ -86,6 +126,7 @@ export interface ProjectDetailDTO {
   project: ProjectDTO;
   items: ProjectItemDTO[];
   updates: ProjectUpdateDTO[];
+  activities: ProjectActivityDTO[];
 }
 
 export interface ProjectsDashboardStats {
