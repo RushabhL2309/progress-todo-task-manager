@@ -3,6 +3,7 @@ import { isDemoMode } from "@/lib/demo-mode";
 import { demoProjectsStore } from "@/lib/demo-projects-store";
 import { demoStore } from "@/lib/demo-store";
 import { connectDB } from "@/lib/mongodb";
+import { getRequestUser } from "@/lib/request-user";
 import { toExtraTaskDTO } from "@/lib/serializers";
 import { ExtraTask } from "@/models/ExtraTask";
 import { ProjectItem } from "@/models/ProjectItem";
@@ -21,14 +22,17 @@ export async function GET(request: Request) {
     }
 
     await connectDB();
+    const user = getRequestUser(request);
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const userFilter = { userId: user.id };
 
     if (date) {
-      const tasks = await ExtraTask.find({ date }).sort({ createdAt: 1 });
+      const tasks = await ExtraTask.find({ date, ...userFilter }).sort({ createdAt: 1 });
       return NextResponse.json(tasks.map(toExtraTaskDTO));
     }
 
     if (from && to) {
-      const tasks = await ExtraTask.find({ date: { $gte: from, $lte: to } }).sort({
+      const tasks = await ExtraTask.find({ date: { $gte: from, $lte: to }, ...userFilter }).sort({
         date: 1,
         createdAt: 1,
       });
@@ -73,6 +77,8 @@ export async function POST(request: Request) {
     }
 
     await connectDB();
+    const user = getRequestUser(request);
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     if (projectId) {
       const count = await ProjectItem.countDocuments({ projectId });
@@ -89,11 +95,12 @@ export async function POST(request: Request) {
         date,
         projectId,
         projectItemId: item._id,
+        userId: user.id,
       });
       return NextResponse.json(toExtraTaskDTO(task), { status: 201 });
     }
 
-    const task = await ExtraTask.create({ name, date });
+    const task = await ExtraTask.create({ name, date, userId: user.id });
     return NextResponse.json(toExtraTaskDTO(task), { status: 201 });
   } catch (error) {
     console.error("POST /api/tasks/extra", error);

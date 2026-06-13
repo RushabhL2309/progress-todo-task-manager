@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { ProjectDetailDTO } from "@/lib/types";
 import { ProjectCompleteModal } from "./ProjectCompleteModal";
+import { ProjectCloseModal } from "./ProjectCloseModal";
 import { ProjectInternalDashboard } from "./ProjectInternalDashboard";
 import { ProjectIssuesTab } from "./ProjectIssuesTab";
 import { ProjectProgressSummary } from "./ProjectProgressSummary";
@@ -27,6 +28,7 @@ interface ProjectDetailViewProps {
     addAsExtraTask: boolean;
     extraTaskTitle: string;
   }) => Promise<void>;
+  onCloseProject: (paymentReceived: boolean) => Promise<void>;
 }
 
 export function ProjectDetailView({
@@ -35,9 +37,11 @@ export function ProjectDetailView({
   onBack,
   onAddItem,
   onCompleteWork,
+  onCloseProject,
 }: ProjectDetailViewProps) {
   const [tab, setTab] = useState<ProjectTab>("dashboard");
   const [completeOpen, setCompleteOpen] = useState(false);
+  const [closeOpen, setCloseOpen] = useState(false);
   const [completeItemId, setCompleteItemId] = useState<string | null>(null);
 
   const openItems = detail.items.filter((i) => i.status === "open");
@@ -81,6 +85,20 @@ export function ProjectDetailView({
                 )}
               </div>
             </div>
+            {project.status !== "completed" && (
+              <button
+                type="button"
+                onClick={() => setCloseOpen(true)}
+                className="btn-ghost shrink-0 !min-h-10 border border-border text-sm"
+              >
+                Close project
+              </button>
+            )}
+            {project.status === "completed" && (
+              <span className="rounded-lg bg-canvas px-3 py-1.5 text-xs font-medium text-muted">
+                Completed
+              </span>
+            )}
           </div>
 
           <div className="border-t border-border px-4 pb-4 sm:px-5">
@@ -127,6 +145,15 @@ export function ProjectDetailView({
         preselectedId={completeItemId}
         onClose={() => setCompleteOpen(false)}
         onSubmit={onCompleteWork}
+      />
+      <ProjectCloseModal
+        open={closeOpen}
+        projectName={project.name}
+        onClose={() => setCloseOpen(false)}
+        onSubmit={async (paymentReceived) => {
+          await onCloseProject(paymentReceived);
+          setCloseOpen(false);
+        }}
       />
     </>
   );

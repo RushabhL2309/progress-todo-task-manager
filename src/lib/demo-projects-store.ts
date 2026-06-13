@@ -183,6 +183,10 @@ export const demoProjectsStore = {
       color: "#5B7C6B",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      deadline: null,
+      createdBy: "",
+      assignedUserIds: [] as string[],
+      linkedClientId: null,
     };
     const project = projectDTOFromStats(base, []);
     store.projects.push({ project, items: [], updates: [] });

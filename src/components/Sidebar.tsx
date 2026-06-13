@@ -1,20 +1,43 @@
 "use client";
 
 import type { ReactNode } from "react";
+import type { SessionUser, UserModules } from "@/lib/auth-types";
+import { effectiveModules, isMaster } from "@/lib/user-access";
 
-export type AppPage = "grid" | "dashboard" | "projects" | "todo" | "tasks" | "settings";
+export type AppPage =
+  | "grid"
+  | "dashboard"
+  | "projects"
+  | "todo"
+  | "tasks"
+  | "clients"
+  | "chat"
+  | "admin"
+  | "settings";
 
 interface SidebarProps {
   active: AppPage;
+  user: SessionUser;
   onNavigate: (page: AppPage) => void;
 }
 
-const NAV: { id: AppPage; label: string; shortLabel: string; desc: string; icon: ReactNode }[] = [
+type NavItem = {
+  id: AppPage;
+  label: string;
+  shortLabel: string;
+  desc: string;
+  icon: ReactNode;
+  module?: keyof UserModules;
+  masterOnly?: boolean;
+};
+
+const NAV: NavItem[] = [
   {
     id: "grid",
     label: "Progress Grid",
     shortLabel: "Grid",
     desc: "Checkbox table",
+    module: "tracker",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
         <rect x="2" y="2" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.5" />
@@ -29,6 +52,7 @@ const NAV: { id: AppPage; label: string; shortLabel: string; desc: string; icon:
     label: "Dashboard",
     shortLabel: "Stats",
     desc: "Charts & stats",
+    module: "tracker",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
         <path d="M3 17V9M8 17V3M13 17V11M18 17V6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -40,6 +64,7 @@ const NAV: { id: AppPage; label: string; shortLabel: string; desc: string; icon:
     label: "Projects",
     shortLabel: "Proj",
     desc: "Multi-project hub",
+    module: "projects",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
         <rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
@@ -49,10 +74,23 @@ const NAV: { id: AppPage; label: string; shortLabel: string; desc: string; icon:
     ),
   },
   {
+    id: "clients",
+    label: "Client updates",
+    shortLabel: "Clients",
+    desc: "Enquiry & payments",
+    module: "client_updates",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
+        <path d="M4 14V6M10 14V4M16 14V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     id: "todo",
     label: "Daily To-Do",
     shortLabel: "To-Do",
     desc: "Add & edit day list",
+    module: "todo",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
         <path d="M4 6H16M7 10H16M7 14H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -65,6 +103,7 @@ const NAV: { id: AppPage; label: string; shortLabel: string; desc: string; icon:
     label: "Manage Tasks",
     shortLabel: "Tasks",
     desc: "Regular & extra",
+    module: "tracker",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
         <path d="M4 6H16M4 10H16M4 14H11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -72,10 +111,35 @@ const NAV: { id: AppPage; label: string; shortLabel: string; desc: string; icon:
     ),
   },
   {
+    id: "chat",
+    label: "Team chat",
+    shortLabel: "Chat",
+    desc: "Internal messages",
+    module: "chat",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
+        <path d="M4 5H16V13H6L4 15V5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    id: "admin",
+    label: "Admin",
+    shortLabel: "Admin",
+    desc: "Users & groups",
+    masterOnly: true,
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
+        <circle cx="10" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M4 17C4 14 6.5 12 10 12C13.5 12 16 14 16 17" stroke="currentColor" strokeWidth="1.5" />
+      </svg>
+    ),
+  },
+  {
     id: "settings",
     label: "Settings",
     shortLabel: "Settings",
-    desc: "Demo & database",
+    desc: "Account",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
         <circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5" />
@@ -90,13 +154,22 @@ const NAV: { id: AppPage; label: string; shortLabel: string; desc: string; icon:
   },
 ];
 
+function visibleNav(user: SessionUser) {
+  const mods = effectiveModules(user);
+  return NAV.filter((item) => {
+    if (item.masterOnly) return isMaster(user);
+    if (!item.module) return true;
+    return mods[item.module];
+  });
+}
+
 function NavButton({
   item,
   isActive,
   onClick,
   layout,
 }: {
-  item: (typeof NAV)[number];
+  item: NavItem;
   isActive: boolean;
   onClick: () => void;
   layout: "sidebar" | "mobile";
@@ -143,10 +216,11 @@ function NavButton({
   );
 }
 
-export function Sidebar({ active, onNavigate }: SidebarProps) {
+export function Sidebar({ active, user, onNavigate }: SidebarProps) {
+  const items = visibleNav(user);
+
   return (
     <>
-      {/* Desktop — floating fixed sidebar, does not scroll with page */}
       <aside
         className="fixed left-4 top-4 bottom-4 z-40 hidden w-[220px] flex-col rounded-2xl border border-border bg-surface/95 shadow-[0_8px_32px_rgba(26,26,26,0.08)] backdrop-blur-md lg:flex"
         aria-label="Main navigation"
@@ -165,14 +239,14 @@ export function Sidebar({ active, onNavigate }: SidebarProps) {
               </svg>
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-ink">Progress Tracker</p>
-              <p className="text-[11px] text-muted">Daily habits</p>
+              <p className="truncate text-sm font-semibold text-ink">{user.name}</p>
+              <p className="truncate text-[11px] text-muted">{user.email}</p>
             </div>
           </div>
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {NAV.map((item) => (
+          {items.map((item) => (
             <NavButton
               key={item.id}
               item={item}
@@ -190,13 +264,12 @@ export function Sidebar({ active, onNavigate }: SidebarProps) {
         </div>
       </aside>
 
-      {/* Mobile — fixed bottom tab bar, always accessible */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 px-2 pb-[env(safe-area-inset-bottom,0px)] pt-1 shadow-[0_-4px_24px_rgba(26,26,26,0.06)] backdrop-blur-md lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 px-1 pb-[env(safe-area-inset-bottom,0px)] pt-1 shadow-[0_-4px_24px_rgba(26,26,26,0.06)] backdrop-blur-md lg:hidden"
         aria-label="Main navigation"
       >
-        <div className="mx-auto flex max-w-lg items-stretch justify-between gap-0.5 px-1">
-          {NAV.map((item) => (
+        <div className="mx-auto flex max-w-lg items-stretch justify-between gap-0.5 overflow-x-auto px-1">
+          {items.map((item) => (
             <NavButton
               key={item.id}
               item={item}
@@ -209,4 +282,13 @@ export function Sidebar({ active, onNavigate }: SidebarProps) {
       </nav>
     </>
   );
+}
+
+export function defaultPageForUser(user: SessionUser): AppPage {
+  const items = visibleNav(user);
+  return items[0]?.id ?? "settings";
+}
+
+export function canAccessPage(user: SessionUser, page: AppPage): boolean {
+  return visibleNav(user).some((item) => item.id === page);
 }

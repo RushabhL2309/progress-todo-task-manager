@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { addDays } from "date-fns";
 import { apiFetch } from "@/lib/api-client";
 import { completionKey, formatPeriodLabel, getColumnsForView, navigateDate, parseDateKey, toDateKey } from "@/lib/dates";
 import { calculatePeriodStats } from "@/lib/score";
+import type { SessionUser } from "@/lib/auth-types";
 import type {
   ExtraTaskDTO,
   GridData,
@@ -14,18 +16,28 @@ import type {
   ViewMode,
 } from "@/lib/types";
 import { AddTaskDrawer, type DrawerTaskType } from "./AddTaskDrawer";
+import { AdminView } from "./AdminView";
+import { ChatView } from "./ChatView";
+import { ClientUpdatesView } from "./ClientUpdatesView";
 import { DailyTodoView } from "./DailyTodoView";
 import { DashboardCharts } from "./DashboardCharts";
 import { DateNavigator } from "./DateNavigator";
 import { GridView } from "./GridView";
-import { Sidebar, type AppPage } from "./Sidebar";
+import { Sidebar, canAccessPage, defaultPageForUser, type AppPage } from "./Sidebar";
 import { TasksView } from "./TasksView";
 import { PriorityTodoCard } from "./PriorityTodoCard";
 import { ProjectsView } from "./ProjectsView";
 import { SettingsView } from "./SettingsView";
 import { ViewModeTabs } from "./ViewModeTabs";
+import { NotificationBell } from "./NotificationBell";
+import { Toast } from "./Toast";
+
+import { hasModule } from "@/lib/user-access";
 
 export function TrackerApp() {
+  const router = useRouter();
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [page, setPage] = useState<AppPage>("grid");
   const [drawerType, setDrawerType] = useState<DrawerTaskType | null>(null);
 
@@ -44,6 +56,7 @@ export function TrackerApp() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const periodColumns = getColumnsForView(view, parseDateKey(anchorDate));
   const rangeFrom = periodColumns[0]?.dateKey ?? anchorDate;
   const rangeTo = periodColumns[periodColumns.length - 1]?.dateKey ?? anchorDate;
@@ -80,6 +93,7 @@ export function TrackerApp() {
   );
 
   const refreshAll = useCallback(async () => {
+    if (!user || !hasModule(user, "tracker")) return;
     setLoading(true);
     setError(null);
     try {
@@ -89,19 +103,61 @@ export function TrackerApp() {
     } finally {
       setLoading(false);
     }
-  }, [applyBootstrap, fetchBootstrap]);
+  }, [applyBootstrap, fetchBootstrap, user]);
 
   const refreshQuiet = useCallback(async () => {
+    if (!user || !hasModule(user, "tracker")) return;
     try {
       applyBootstrap(await fetchBootstrap());
     } catch {
       /* keep optimistic state on quiet refresh failure */
     }
-  }, [applyBootstrap, fetchBootstrap]);
+  }, [applyBootstrap, fetchBootstrap, user]);
 
   useEffect(() => {
-    refreshAll();
-  }, [refreshAll]);
+    async function loadSession() {
+      const res = await fetch("/api/auth/me");
+      if (!res.ok) {
+        router.push("/login");
+        return null;
+      }
+      const data = await res.json();
+      return data.user as SessionUser;
+    }
+
+    loadSession()
+      .then((sessionUser) => {
+        if (sessionUser) {
+          setUser(sessionUser);
+          setPage(defaultPageForUser(sessionUser));
+        }
+      })
+      .finally(() => setAuthLoading(false));
+
+    async function refreshSession() {
+      const sessionUser = await loadSession();
+      if (!sessionUser) return;
+      setUser((prev) => {
+        if (prev && JSON.stringify(prev.modules) !== JSON.stringify(sessionUser.modules)) {
+          setPage((current) =>
+            canAccessPage(sessionUser, current) ? current : defaultPageForUser(sessionUser)
+          );
+        }
+        return sessionUser;
+      });
+    }
+
+    const interval = setInterval(refreshSession, 15000);
+    window.addEventListener("focus", refreshSession);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", refreshSession);
+    };
+  }, [router]);
+
+  useEffect(() => {
+    if (user) refreshAll();
+  }, [user, refreshAll]);
 
   useEffect(() => {
     const onDemoChange = () => refreshAll();
@@ -171,11 +227,12 @@ export function TrackerApp() {
   }
 
   useEffect(() => {
+    if (!user || !hasModule(user, "projects")) return;
     apiFetch("/api/projects")
       .then((res) => (res.ok ? res.json() : []))
       .then((data: ProjectDTO[]) => setProjects(data))
       .catch(() => setProjects([]));
-  }, []);
+  }, [user]);
 
   async function handleAddExtra(name: string, date: string, projectId?: string) {
     const res = await apiFetch("/api/tasks/extra", {
@@ -261,6 +318,14 @@ export function TrackerApp() {
 
   const periodLabel = formatPeriodLabel(view, parseDateKey(anchorDate));
 
+  useEffect(() => {
+    if (!user || !hasModule(user, "projects")) return;
+    apiFetch("/api/projects")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: ProjectDTO[]) => setProjects(data))
+      .catch(() => setProjects([]));
+  }, [user]);
+
   const pageTitle =
     page === "grid"
       ? "Progress Grid"
@@ -268,11 +333,17 @@ export function TrackerApp() {
         ? "Dashboard"
         : page === "projects"
           ? "Projects"
-          : page === "todo"
-            ? "Daily To-Do"
-            : page === "tasks"
-              ? "Manage Tasks"
-              : "Settings";
+          : page === "clients"
+            ? "Client updates"
+            : page === "chat"
+              ? "Team chat"
+              : page === "admin"
+                ? "Admin"
+                : page === "todo"
+                  ? "Daily To-Do"
+                  : page === "tasks"
+                    ? "Manage Tasks"
+                    : "Settings";
 
   const routinePending = scheduledTasks
     .filter((t) => !grid?.completions[completionKey(t.id, todoDate)])
@@ -288,23 +359,60 @@ export function TrackerApp() {
     setPage("todo");
   }
 
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  }
+
+  const handleNotificationNavigate = useCallback(
+    (target: AppPage) => {
+      if (user && canAccessPage(user, target)) setPage(target);
+    },
+    [user]
+  );
+
+  const showToast = useCallback((message: string) => {
+    setToastMessage(message);
+  }, []);
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-canvas">
+        <p className="text-sm text-muted">Loading…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-canvas">
-      <Sidebar active={page} onNavigate={setPage} />
+      <Toast message={toastMessage} onDone={() => setToastMessage(null)} />
+      <Sidebar active={page} user={user} onNavigate={setPage} />
 
       <div className="min-h-screen pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] lg:pb-0 lg:pl-[252px]">
         <header className="sticky top-0 z-30 border-b border-border bg-surface/95 backdrop-blur-md">
           <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6 sm:py-3 lg:px-8">
-            <div className="min-w-0 shrink-0">
-              <h1 className="text-base font-semibold text-ink sm:text-lg">{pageTitle}</h1>
+            <h1 className="min-w-0 truncate text-base font-semibold text-ink sm:text-lg">{pageTitle}</h1>
+            <div className="flex items-center justify-between gap-3 sm:justify-end">
+              <PriorityTodoCard
+                items={stats?.todoItems ?? []}
+                loading={loading}
+                onToggleScheduled={(taskId, date) => handleToggleCompletion(taskId, date, true)}
+                onToggleExtra={(id) => handleToggleExtra(id, true)}
+                onViewAll={handleViewAllTodos}
+              />
+              <div className="flex shrink-0 items-center gap-2">
+                <NotificationBell onNavigate={handleNotificationNavigate} onToast={showToast} />
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="btn-ghost !min-h-9 px-3 text-xs font-medium sm:text-sm"
+                  title={`Sign out ${user.name}`}
+                >
+                  Sign out
+                </button>
+              </div>
             </div>
-            <PriorityTodoCard
-              items={stats?.todoItems ?? []}
-              loading={loading}
-              onToggleScheduled={(taskId, date) => handleToggleCompletion(taskId, date, true)}
-              onToggleExtra={(id) => handleToggleExtra(id, true)}
-              onViewAll={handleViewAllTodos}
-            />
           </div>
         </header>
 
@@ -406,7 +514,15 @@ export function TrackerApp() {
             />
           )}
 
-          {page === "settings" && <SettingsView onDemoChange={handleDemoChange} />}
+          {page === "clients" && <ClientUpdatesView />}
+
+          {page === "chat" && <ChatView />}
+
+          {page === "admin" && <AdminView />}
+
+          {page === "settings" && (
+            <SettingsView user={user} onDemoChange={handleDemoChange} />
+          )}
         </main>
       </div>
 

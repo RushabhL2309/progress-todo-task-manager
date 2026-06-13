@@ -24,6 +24,10 @@ export function toProjectDTO(
     breakdown: stats.breakdown,
     overdueCount: stats.overdueCount,
     nextDeadline: stats.nextDeadline,
+    deadline: doc.deadline ?? null,
+    createdBy: doc.createdBy?.toString() ?? "",
+    assignedUserIds: (doc.assignedUserIds ?? []).map((id) => id.toString()),
+    linkedClientId: doc.linkedClientId?.toString() ?? null,
   };
 }
 

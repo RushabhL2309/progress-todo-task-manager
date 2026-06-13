@@ -7,10 +7,12 @@ const ExtraTaskSchema = new Schema(
     completed: { type: Boolean, default: false },
     projectId: { type: Schema.Types.ObjectId, ref: "Project", default: null },
     projectItemId: { type: Schema.Types.ObjectId, ref: "ProjectItem", default: null },
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
   },
   { timestamps: true }
 );
 
+ExtraTaskSchema.index({ userId: 1, date: 1 });
 ExtraTaskSchema.index({ date: 1 });
 
 export type ExtraTaskDocument = InferSchemaType<typeof ExtraTaskSchema> & {

@@ -1,7 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch, getDemoModeEnabled, setDemoModeEnabled } from "@/lib/api-client";
+import type { SessionUser } from "@/lib/auth-types";
 
 interface HealthResponse {
   demo: boolean;
@@ -10,10 +12,12 @@ interface HealthResponse {
 }
 
 interface SettingsViewProps {
+  user: SessionUser;
   onDemoChange: () => void;
 }
 
-export function SettingsView({ onDemoChange }: SettingsViewProps) {
+export function SettingsView({ user, onDemoChange }: SettingsViewProps) {
+  const router = useRouter();
   const [demoEnabled, setDemoEnabled] = useState(true);
   const [dbStatus, setDbStatus] = useState<string>("checking");
   const [dbError, setDbError] = useState<string | null>(null);
@@ -153,6 +157,24 @@ export function SettingsView({ onDemoChange }: SettingsViewProps) {
             Schema and indexes are ready. Add tasks from the grid to populate your database.
           </p>
         )}
+      </div>
+
+      <div className="card p-4 sm:p-5">
+        <h2 className="text-sm font-semibold text-ink">Account</h2>
+        <p className="mt-2 text-sm text-muted">
+          Signed in as <span className="font-medium text-ink">{user.name}</span> ({user.email})
+        </p>
+        <button
+          type="button"
+          className="btn-ghost mt-4"
+          onClick={async () => {
+            await fetch("/api/auth/logout", { method: "POST" });
+            router.push("/login");
+            router.refresh();
+          }}
+        >
+          Sign out
+        </button>
       </div>
 
       <div className="card p-4 sm:p-5">

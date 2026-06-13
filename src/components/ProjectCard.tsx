@@ -40,6 +40,11 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
           ) : (
             <p className="mt-0.5 text-xs text-muted/60">No description</p>
           )}
+          {project.deadline && (
+            <p className="mt-1 text-[10px] text-muted">
+              Project due {project.deadline}
+            </p>
+          )}
         </div>
       </div>
 

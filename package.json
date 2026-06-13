@@ -9,8 +9,10 @@
     "lint": "node node_modules/next/dist/bin/next lint"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "cloudinary": "^2.5.1",
     "date-fns": "^4.1.0",
+    "jose": "^6.2.3",
     "mongoose": "^8.9.5",
     "next": "^15.1.6",
     "react": "^19.0.0",
@@ -19,6 +21,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.10.7",
     "@types/react": "^19.0.7",
     "@types/react-dom": "^19.0.3",

@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { getColumnsForView, parseDateKey } from "@/lib/dates";
 import { isDemoMode } from "@/lib/demo-mode";
 import { demoStore } from "@/lib/demo-store";
 import { connectDB } from "@/lib/mongodb";
+import { getRequestUser } from "@/lib/request-user";
 import { calculatePeriodStats } from "@/lib/score";
 import { completionsToMap, toExtraTaskDTO, toScheduledTaskDTO } from "@/lib/serializers";
 import type { ExtraDaySummary, ViewMode } from "@/lib/types";
@@ -13,6 +15,11 @@ import { ScheduledTask } from "@/models/ScheduledTask";
 /** Single round-trip for main app data — faster initial load */
 export async function GET(request: Request) {
   try {
+    const user = getRequestUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const view = (searchParams.get("view") ?? "week") as ViewMode;
     const anchorDate = searchParams.get("anchorDate") ?? new Date().toISOString().slice(0, 10);
@@ -51,16 +58,30 @@ export async function GET(request: Request) {
     const to = columns[columns.length - 1]?.dateKey ?? anchorDate;
 
     await connectDB();
+    const userId = user.id;
+    const userOid = new mongoose.Types.ObjectId(userId);
 
-    const [scheduledDocs, completionDocs, extraSelected, extraTodo, extraRange, extraAgg] =
+    const scheduledDocs = await ScheduledTask.find({ isActive: true, userId: userOid }).sort({
+      sortOrder: 1,
+      createdAt: 1,
+    });
+    const taskIds = scheduledDocs.map((t) => t._id);
+
+    const [completionDocs, extraSelected, extraTodo, extraRange, extraAgg] =
       await Promise.all([
-        ScheduledTask.find({ isActive: true }).sort({ sortOrder: 1, createdAt: 1 }),
-        Completion.find({ date: { $gte: from, $lte: to }, completed: true }),
-        ExtraTask.find({ date: selectedDate }).sort({ createdAt: 1 }),
-        ExtraTask.find({ date: todoDate }).sort({ createdAt: 1 }),
-        ExtraTask.find({ date: { $gte: from, $lte: to } }).sort({ date: 1, createdAt: 1 }),
+        Completion.find({
+          date: { $gte: from, $lte: to },
+          completed: true,
+          scheduledTaskId: { $in: taskIds },
+        }),
+        ExtraTask.find({ date: selectedDate, userId: userOid }).sort({ createdAt: 1 }),
+        ExtraTask.find({ date: todoDate, userId: userOid }).sort({ createdAt: 1 }),
+        ExtraTask.find({ date: { $gte: from, $lte: to }, userId: userOid }).sort({
+          date: 1,
+          createdAt: 1,
+        }),
         ExtraTask.aggregate<{ _id: string; total: number; completed: number }>([
-          { $match: { date: { $gte: from, $lte: to } } },
+          { $match: { date: { $gte: from, $lte: to }, userId: userOid } },
           {
             $group: {
               _id: "$date",

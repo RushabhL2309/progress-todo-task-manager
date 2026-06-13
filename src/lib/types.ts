@@ -54,6 +54,10 @@ export interface ProjectDTO {
   };
   overdueCount: number;
   nextDeadline: string | null;
+  deadline: string | null;
+  createdBy: string;
+  assignedUserIds: string[];
+  linkedClientId: string | null;
 }
 
 export interface ProjectItemDTO {

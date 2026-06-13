@@ -10,9 +10,16 @@ const ProjectSchema = new Schema(
       default: "active",
     },
     color: { type: String, default: "#5B7C6B" },
+    deadline: { type: String, default: null },
+    createdBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
+    assignedUserIds: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    linkedClientId: { type: Schema.Types.ObjectId, ref: "ClientProject", default: null },
   },
   { timestamps: true }
 );
+
+ProjectSchema.index({ createdBy: 1 });
+ProjectSchema.index({ assignedUserIds: 1 });
 
 export type ProjectDocument = InferSchemaType<typeof ProjectSchema> & {
   _id: mongoose.Types.ObjectId;

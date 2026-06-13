@@ -25,12 +25,17 @@ export function getCloudinary() {
   return cloudinary;
 }
 
+export function getCloudinaryFolder(subfolder?: string): string {
+  const base = process.env.CLOUDINARY_FOLDER?.trim() || "progress tracker";
+  return subfolder ? `${base}/${subfolder}` : base;
+}
+
 /** Ready for future task attachments / avatars — not used in v1 UI */
 export async function uploadImage(
   file: string,
-  folder = "daily-scheduler"
+  folder?: string
 ): Promise<{ url: string; publicId: string }> {
   const cld = getCloudinary();
-  const result = await cld.uploader.upload(file, { folder });
+  const result = await cld.uploader.upload(file, { folder: folder ?? getCloudinaryFolder() });
   return { url: result.secure_url, publicId: result.public_id };
 }
