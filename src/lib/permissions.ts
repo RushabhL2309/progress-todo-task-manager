@@ -1,5 +1,6 @@
 import type { SessionUser, UserModules } from "./auth-types";
 import { effectiveModules as clientEffectiveModules } from "./user-access";
+import mongoose from "mongoose";
 
 export function effectiveModules(user: SessionUser): UserModules {
   return clientEffectiveModules(user);
@@ -43,4 +44,15 @@ export function clientAccessFilter(user: SessionUser) {
   return {
     $or: [{ createdBy: user.id }, { assignedUserIds: user.id }],
   };
+}
+
+/** Scheduled + extra tasks scoped per user; master also sees unclaimed pre-auth rows. */
+export function personalTaskFilter(user: SessionUser) {
+  const uid = new mongoose.Types.ObjectId(user.id);
+  if (isMaster(user)) {
+    return {
+      $or: [{ userId: uid }, { userId: null }, { userId: { $exists: false } }],
+    };
+  }
+  return { userId: uid };
 }

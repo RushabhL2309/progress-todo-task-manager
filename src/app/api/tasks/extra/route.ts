@@ -4,6 +4,7 @@ import { demoProjectsStore } from "@/lib/demo-projects-store";
 import { demoStore } from "@/lib/demo-store";
 import { connectDB } from "@/lib/mongodb";
 import { getRequestUser } from "@/lib/request-user";
+import { personalTaskFilter } from "@/lib/permissions";
 import { toExtraTaskDTO } from "@/lib/serializers";
 import { ExtraTask } from "@/models/ExtraTask";
 import { ProjectItem } from "@/models/ProjectItem";
@@ -24,7 +25,7 @@ export async function GET(request: Request) {
     await connectDB();
     const user = getRequestUser(request);
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const userFilter = { userId: user.id };
+    const userFilter = personalTaskFilter(user);
 
     if (date) {
       const tasks = await ExtraTask.find({ date, ...userFilter }).sort({ createdAt: 1 });

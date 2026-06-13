@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import mongoose from "mongoose";
 import { getColumnsForView, parseDateKey } from "@/lib/dates";
 import { isDemoMode } from "@/lib/demo-mode";
 import { demoStore } from "@/lib/demo-store";
 import { connectDB } from "@/lib/mongodb";
 import { getRequestUser } from "@/lib/request-user";
+import { personalTaskFilter } from "@/lib/permissions";
 import { calculatePeriodStats } from "@/lib/score";
 import { completionsToMap, toExtraTaskDTO, toScheduledTaskDTO } from "@/lib/serializers";
 import type { ExtraDaySummary, ViewMode } from "@/lib/types";
@@ -58,10 +58,9 @@ export async function GET(request: Request) {
     const to = columns[columns.length - 1]?.dateKey ?? anchorDate;
 
     await connectDB();
-    const userId = user.id;
-    const userOid = new mongoose.Types.ObjectId(userId);
+    const taskFilter = personalTaskFilter(user);
 
-    const scheduledDocs = await ScheduledTask.find({ isActive: true, userId: userOid }).sort({
+    const scheduledDocs = await ScheduledTask.find({ isActive: true, ...taskFilter }).sort({
       sortOrder: 1,
       createdAt: 1,
     });
@@ -74,14 +73,14 @@ export async function GET(request: Request) {
           completed: true,
           scheduledTaskId: { $in: taskIds },
         }),
-        ExtraTask.find({ date: selectedDate, userId: userOid }).sort({ createdAt: 1 }),
-        ExtraTask.find({ date: todoDate, userId: userOid }).sort({ createdAt: 1 }),
-        ExtraTask.find({ date: { $gte: from, $lte: to }, userId: userOid }).sort({
+        ExtraTask.find({ date: selectedDate, ...taskFilter }).sort({ createdAt: 1 }),
+        ExtraTask.find({ date: todoDate, ...taskFilter }).sort({ createdAt: 1 }),
+        ExtraTask.find({ date: { $gte: from, $lte: to }, ...taskFilter }).sort({
           date: 1,
           createdAt: 1,
         }),
         ExtraTask.aggregate<{ _id: string; total: number; completed: number }>([
-          { $match: { date: { $gte: from, $lte: to }, userId: userOid } },
+          { $match: { date: { $gte: from, $lte: to }, ...taskFilter } },
           {
             $group: {
               _id: "$date",

@@ -1,5 +1,6 @@
 import { connectDB } from "./mongodb";
 import { hashPassword, masterModules } from "./auth";
+import { migrateLegacyDataToMaster } from "./migrate-legacy-data";
 import { User } from "@/models/User";
 
 let seeded = false;
@@ -24,6 +25,8 @@ export async function ensureMasterAdmin(): Promise<void> {
     });
     console.log("[auth] Master admin created:", email);
   }
+
+  await migrateLegacyDataToMaster();
 
   seeded = true;
 }

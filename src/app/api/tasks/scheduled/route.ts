@@ -3,6 +3,7 @@ import { isDemoMode } from "@/lib/demo-mode";
 import { demoStore } from "@/lib/demo-store";
 import { connectDB } from "@/lib/mongodb";
 import { getRequestUser } from "@/lib/request-user";
+import { personalTaskFilter } from "@/lib/permissions";
 import { toScheduledTaskDTO } from "@/lib/serializers";
 import { ScheduledTask } from "@/models/ScheduledTask";
 
@@ -16,7 +17,8 @@ export async function GET(request: Request) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     await connectDB();
-    const tasks = await ScheduledTask.find({ isActive: true, userId: user.id }).sort({
+    const taskFilter = personalTaskFilter(user);
+    const tasks = await ScheduledTask.find({ isActive: true, ...taskFilter }).sort({
       sortOrder: 1,
       createdAt: 1,
     });
@@ -44,7 +46,8 @@ export async function POST(request: Request) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     await connectDB();
-    const count = await ScheduledTask.countDocuments({ isActive: true, userId: user.id });
+    const taskFilter = personalTaskFilter(user);
+    const count = await ScheduledTask.countDocuments({ isActive: true, ...taskFilter });
     const task = await ScheduledTask.create({ name, sortOrder: count, userId: user.id });
     return NextResponse.json(toScheduledTaskDTO(task), { status: 201 });
   } catch (error) {
