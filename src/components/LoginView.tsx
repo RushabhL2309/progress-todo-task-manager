@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 export function LoginView() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +19,7 @@ export function LoginView() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, rememberMe }),
+        body: JSON.stringify({ loginId, password, rememberMe }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -39,20 +39,21 @@ export function LoginView() {
     <div className="flex min-h-screen items-center justify-center bg-canvas px-4">
       <div className="card w-full max-w-md p-6 sm:p-8">
         <h1 className="text-xl font-semibold text-ink">Progress Tracker</h1>
-        <p className="mt-1 text-sm text-muted">Sign in to continue</p>
+        <p className="mt-1 text-sm text-muted">Sign in with your name and password</p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
-            <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-ink">
-              Email
+            <label htmlFor="loginId" className="mb-1.5 block text-sm font-medium text-ink">
+              Name
             </label>
             <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="loginId"
+              type="text"
+              value={loginId}
+              onChange={(e) => setLoginId(e.target.value)}
               className="input-field"
-              autoComplete="email"
+              autoComplete="username"
+              placeholder="Your account name"
               required
             />
           </div>

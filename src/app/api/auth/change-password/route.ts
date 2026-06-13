@@ -8,6 +8,13 @@ export async function POST(request: Request) {
   const auth = await requireAuth(request);
   if (auth.error) return auth.error;
 
+  if (!auth.user.passwordChangeEnabled) {
+    return NextResponse.json(
+      { error: "Password change is not enabled for your account" },
+      { status: 403 }
+    );
+  }
+
   try {
     const body = await request.json();
     const currentPassword =

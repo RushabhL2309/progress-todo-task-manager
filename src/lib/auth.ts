@@ -32,10 +32,13 @@ export async function createSessionToken(
 ): Promise<string> {
   const maxAge = rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60;
   return new SignJWT({
-    email: user.email,
+    email: user.email ?? "",
     name: user.name,
     role: user.role,
     modules: user.role === "master" ? masterModules() : user.modules,
+    notificationEmail: user.notificationEmail ?? "",
+    emailUpdatesEnabled: user.emailUpdatesEnabled,
+    passwordChangeEnabled: user.passwordChangeEnabled,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(user.id)
@@ -51,10 +54,13 @@ export async function verifySessionToken(token: string): Promise<SessionUser | n
     if (!id || typeof id !== "string") return null;
     return {
       id,
-      email: String(payload.email ?? ""),
+      email: payload.email ? String(payload.email) : null,
       name: String(payload.name ?? ""),
       role: payload.role === "master" ? "master" : "user",
       modules: (payload.modules as UserModules) ?? masterModules(),
+      notificationEmail: payload.notificationEmail ? String(payload.notificationEmail) : null,
+      emailUpdatesEnabled: Boolean(payload.emailUpdatesEnabled),
+      passwordChangeEnabled: Boolean(payload.passwordChangeEnabled),
     };
   } catch {
     return null;

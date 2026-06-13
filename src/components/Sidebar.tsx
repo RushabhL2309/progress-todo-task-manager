@@ -210,7 +210,7 @@ export function Sidebar({ active, user, onNavigate, title, mobileTrailing }: Sid
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-ink">{user.name}</p>
-              <p className="truncate text-[11px] text-muted">{user.email}</p>
+              <p className="truncate text-[11px] text-muted">{user.name}</p>
             </div>
           </div>
         </div>

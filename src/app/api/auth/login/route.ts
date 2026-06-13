@@ -7,36 +7,48 @@ import {
   verifyPassword,
 } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
-import { toUserDTO } from "@/lib/user-serializers";
+import { nameKeyFrom } from "@/lib/user-login";
+import { toSessionUser, toUserDTO } from "@/lib/user-serializers";
 import { User } from "@/models/User";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const email = typeof body.email === "string" ? body.email.toLowerCase().trim() : "";
+    const loginId =
+      typeof body.loginId === "string"
+        ? body.loginId.trim()
+        : typeof body.name === "string"
+          ? body.name.trim()
+          : typeof body.email === "string"
+            ? body.email.trim()
+            : "";
     const password = typeof body.password === "string" ? body.password : "";
     const rememberMe = Boolean(body.rememberMe);
 
-    if (!email || !password) {
-      return NextResponse.json({ error: "Email and password required" }, { status: 400 });
+    if (!loginId || !password) {
+      return NextResponse.json({ error: "Name and password required" }, { status: 400 });
     }
 
     await connectDB();
-    const user = await User.findOne({ email, isActive: true });
+    const key = nameKeyFrom(loginId);
+    let user;
+    if (loginId.includes("@")) {
+      const matches = await User.find({ isActive: true, email: key });
+      user = matches.length === 1 ? matches[0] : null;
+    } else {
+      user = await User.findOne({ isActive: true, nameKey: key });
+    }
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
-      return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
+      return NextResponse.json({ error: "Invalid name or password" }, { status: 401 });
     }
 
     user.lastLoginAt = new Date();
     await user.save();
 
-    const sessionUser = {
-      id: user._id.toString(),
-      email: user.email,
-      name: user.name,
-      role: user.role as "master" | "user",
-      modules: user.role === "master" ? masterModules() : toUserDTO(user).modules,
-    };
+    const sessionUser = toSessionUser(
+      user,
+      user.role === "master" ? masterModules() : toUserDTO(user).modules
+    );
 
     const token = await createSessionToken(sessionUser, rememberMe);
     const res = NextResponse.json({ user: sessionUser });

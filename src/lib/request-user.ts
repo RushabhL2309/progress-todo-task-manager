@@ -14,9 +14,12 @@ export function getRequestUser(request: Request): SessionUser | null {
   }
   return {
     id,
-    email: request.headers.get("x-user-email") ?? "",
+    email: request.headers.get("x-user-email") || null,
     name: request.headers.get("x-user-name") ?? "",
     role,
     modules,
+    notificationEmail: null,
+    emailUpdatesEnabled: false,
+    passwordChangeEnabled: false,
   };
 }

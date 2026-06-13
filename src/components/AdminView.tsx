@@ -30,7 +30,13 @@ function UserEditForm({
   saving,
 }: {
   user: UserDTO;
-  onSave: (data: { name: string; password: string; modules: UserModules }) => Promise<void>;
+  onSave: (data: {
+    name: string;
+    password: string;
+    modules: UserModules;
+    emailUpdatesEnabled: boolean;
+    passwordChangeEnabled: boolean;
+  }) => Promise<void>;
   onDeactivate: () => Promise<void>;
   onReactivate: () => Promise<void>;
   onCancel: () => void;
@@ -39,6 +45,8 @@ function UserEditForm({
   const [name, setName] = useState(user.name);
   const [password, setPassword] = useState("");
   const [modules, setModules] = useState<UserModules>({ ...user.modules });
+  const [emailUpdatesEnabled, setEmailUpdatesEnabled] = useState(user.emailUpdatesEnabled);
+  const [passwordChangeEnabled, setPasswordChangeEnabled] = useState(user.passwordChangeEnabled);
 
   return (
     <div className="mt-3 space-y-3 border-t border-border pt-3">
@@ -73,11 +81,29 @@ function UserEditForm({
           </label>
         ))}
       </div>
+      <label className="flex items-center gap-2 text-xs text-muted">
+        <input
+          type="checkbox"
+          checked={emailUpdatesEnabled}
+          onChange={(e) => setEmailUpdatesEnabled(e.target.checked)}
+        />
+        Allow email option in Settings (for future email updates)
+      </label>
+      <label className="flex items-center gap-2 text-xs text-muted">
+        <input
+          type="checkbox"
+          checked={passwordChangeEnabled}
+          onChange={(e) => setPasswordChangeEnabled(e.target.checked)}
+        />
+        Allow password change in Settings
+      </label>
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
           disabled={saving}
-          onClick={() => onSave({ name, password, modules })}
+          onClick={() =>
+            onSave({ name, password, modules, emailUpdatesEnabled, passwordChangeEnabled })
+          }
           className="btn-primary text-xs"
         >
           {saving ? "Saving…" : "Save changes"}
@@ -115,9 +141,10 @@ export function AdminView() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [emailUpdatesOnCreate, setEmailUpdatesOnCreate] = useState(false);
+  const [passwordChangeOnCreate, setPasswordChangeOnCreate] = useState(false);
   const [modules, setModules] = useState<UserModules>({
     ...EMPTY_MODULES,
     tracker: true,
@@ -167,12 +194,19 @@ export function AdminView() {
     const res = await apiFetch("/api/admin/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, name, modules }),
+      body: JSON.stringify({
+        name,
+        password,
+        modules,
+        emailUpdatesEnabled: emailUpdatesOnCreate,
+        passwordChangeEnabled: passwordChangeOnCreate,
+      }),
     });
     if (res.ok) {
-      setEmail("");
       setPassword("");
       setName("");
+      setEmailUpdatesOnCreate(false);
+      setPasswordChangeOnCreate(false);
       setModules({ ...EMPTY_MODULES, tracker: true });
       setMessage("User created.");
       await load();
@@ -180,6 +214,22 @@ export function AdminView() {
       const data = await res.json().catch(() => ({}));
       setMessage((data as { error?: string }).error ?? "Create failed");
     }
+  }
+
+  async function toggleEmailUpdates(user: UserDTO) {
+    const next = !user.emailUpdatesEnabled;
+    setUsers((list) =>
+      list.map((u) => (u.id === user.id ? { ...u, emailUpdatesEnabled: next } : u))
+    );
+    await patchUser(user.id, { emailUpdatesEnabled: next });
+  }
+
+  async function togglePasswordChange(user: UserDTO) {
+    const next = !user.passwordChangeEnabled;
+    setUsers((list) =>
+      list.map((u) => (u.id === user.id ? { ...u, passwordChangeEnabled: next } : u))
+    );
+    await patchUser(user.id, { passwordChangeEnabled: next });
   }
 
   async function toggleUserModule(user: UserDTO, mod: keyof UserModules) {
@@ -245,20 +295,12 @@ export function AdminView() {
       <div className="card p-4 sm:p-5">
         <h2 className="text-sm font-semibold text-ink">Create user</h2>
         <form onSubmit={handleCreateUser} className="mt-4 space-y-3">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <input
               type="text"
-              placeholder="Name"
+              placeholder="Name (used to sign in)"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="input-field text-sm"
-              required
-            />
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
               className="input-field text-sm"
               required
             />
@@ -271,6 +313,22 @@ export function AdminView() {
               required
             />
           </div>
+          <label className="flex items-center gap-2 text-sm text-muted">
+            <input
+              type="checkbox"
+              checked={emailUpdatesOnCreate}
+              onChange={(e) => setEmailUpdatesOnCreate(e.target.checked)}
+            />
+            Allow email option in Settings
+          </label>
+          <label className="flex items-center gap-2 text-sm text-muted">
+            <input
+              type="checkbox"
+              checked={passwordChangeOnCreate}
+              onChange={(e) => setPasswordChangeOnCreate(e.target.checked)}
+            />
+            Allow password change in Settings
+          </label>
           <div className="flex flex-wrap gap-3">
             {ALL_MODULES.map((mod) => (
               <label key={mod} className="flex items-center gap-2 text-sm text-muted">
@@ -305,7 +363,8 @@ export function AdminView() {
                     <p className="font-medium text-ink">
                       {u.name}{" "}
                       <span className="text-xs text-muted">
-                        ({u.email}) {u.role === "master" ? "· master" : ""}
+                        {u.role === "master" ? "· master" : ""}
+                        {u.notificationEmail ? ` · ${u.notificationEmail}` : ""}
                       </span>
                     </p>
                   </div>
@@ -339,6 +398,30 @@ export function AdminView() {
                         {MODULE_LABELS[mod]}
                       </button>
                     ))}
+                    <button
+                      type="button"
+                      disabled={savingId === u.id || !u.isActive}
+                      onClick={() => toggleEmailUpdates(u)}
+                      className={`rounded-lg px-2 py-1 text-[10px] font-medium transition-colors ${
+                        u.emailUpdatesEnabled
+                          ? "bg-blue-50 text-blue-700"
+                          : "bg-canvas text-muted"
+                      } ${savingId === u.id ? "opacity-50" : ""}`}
+                    >
+                      Email in Settings
+                    </button>
+                    <button
+                      type="button"
+                      disabled={savingId === u.id || !u.isActive}
+                      onClick={() => togglePasswordChange(u)}
+                      className={`rounded-lg px-2 py-1 text-[10px] font-medium transition-colors ${
+                        u.passwordChangeEnabled
+                          ? "bg-amber-50 text-amber-800"
+                          : "bg-canvas text-muted"
+                      } ${savingId === u.id ? "opacity-50" : ""}`}
+                    >
+                      Change password
+                    </button>
                   </div>
                 )}
                 {u.role !== "master" && editingId === u.id && (
@@ -346,8 +429,19 @@ export function AdminView() {
                     user={u}
                     saving={savingId === u.id}
                     onCancel={() => setEditingId(null)}
-                    onSave={async ({ name: n, password: p, modules: m }) => {
-                      const body: Record<string, unknown> = { name: n, modules: m };
+                    onSave={async ({
+                      name: n,
+                      password: p,
+                      modules: m,
+                      emailUpdatesEnabled: eu,
+                      passwordChangeEnabled: pc,
+                    }) => {
+                      const body: Record<string, unknown> = {
+                        name: n,
+                        modules: m,
+                        emailUpdatesEnabled: eu,
+                        passwordChangeEnabled: pc,
+                      };
                       if (p.trim()) body.password = p.trim();
                       await patchUser(u.id, body);
                     }}

@@ -38,6 +38,13 @@ export function SettingsView({ user, onDemoChange }: SettingsViewProps) {
   const [passwordMsg, setPasswordMsg] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [notificationEmail, setNotificationEmail] = useState(user.notificationEmail ?? "");
+  const [emailMsg, setEmailMsg] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [savingEmail, setSavingEmail] = useState(false);
+
+  const canSetEmail = user.emailUpdatesEnabled;
+  const canChangePassword = user.passwordChangeEnabled;
 
   const [demoEnabled, setDemoEnabled] = useState(true);
   const [dbStatus, setDbStatus] = useState("checking");
@@ -76,6 +83,10 @@ export function SettingsView({ user, onDemoChange }: SettingsViewProps) {
     window.addEventListener("project-layout-change", onLayoutChange);
     return () => window.removeEventListener("project-layout-change", onLayoutChange);
   }, []);
+
+  useEffect(() => {
+    setNotificationEmail(user.notificationEmail ?? "");
+  }, [user.notificationEmail, user.emailUpdatesEnabled]);
 
   useEffect(() => {
     if (!isMaster) return;
@@ -140,6 +151,30 @@ export function SettingsView({ user, onDemoChange }: SettingsViewProps) {
     }
   }
 
+  async function handleSaveNotificationEmail(e: FormEvent) {
+    e.preventDefault();
+    setEmailMsg(null);
+    setEmailError(null);
+    setSavingEmail(true);
+    try {
+      const res = await apiFetch("/api/auth/notification-email", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationEmail }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setEmailError(data.error ?? "Failed to save email");
+        return;
+      }
+      setEmailMsg("Email saved — will be used for updates when email is enabled");
+    } catch {
+      setEmailError("Something went wrong");
+    } finally {
+      setSavingEmail(false);
+    }
+  }
+
   async function handleSignOut() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
@@ -180,51 +215,82 @@ export function SettingsView({ user, onDemoChange }: SettingsViewProps) {
 
         <div className="card p-4 sm:p-5">
           <h2 className="text-sm font-semibold text-ink">Account</h2>
-          <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+          <dl className="mt-4 text-sm">
             <div className="rounded-lg border border-border bg-canvas/50 px-3 py-2.5">
-              <dt className="text-xs text-muted">Name</dt>
+              <dt className="text-xs text-muted">Login name</dt>
               <dd className="mt-0.5 font-medium text-ink">{user.name}</dd>
-            </div>
-            <div className="rounded-lg border border-border bg-canvas/50 px-3 py-2.5">
-              <dt className="text-xs text-muted">Login ID</dt>
-              <dd className="mt-0.5 truncate font-medium text-ink">{user.email}</dd>
             </div>
           </dl>
 
-          <form
-            onSubmit={handleChangePassword}
-            className="mt-5 space-y-3 border-t border-border pt-5"
-          >
-            <p className="text-xs font-medium text-muted">Change password</p>
-            <div className="grid gap-3 sm:grid-cols-3">
+          {canSetEmail ? (
+            <form
+              onSubmit={handleSaveNotificationEmail}
+              className="mt-5 space-y-3 border-t border-border pt-5"
+            >
+              <div>
+                <p className="text-xs font-medium text-muted">Email for updates</p>
+                <p className="mt-0.5 text-[11px] text-muted">
+                  Optional — for future email notifications from the app
+                </p>
+              </div>
               <input
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Current password"
+                type="email"
+                value={notificationEmail}
+                onChange={(e) => setNotificationEmail(e.target.value)}
+                placeholder="you@example.com"
                 className="input-field text-sm"
-                autoComplete="current-password"
+                autoComplete="email"
               />
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="New password"
-                className="input-field text-sm"
-                autoComplete="new-password"
-              />
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm new password"
-                className="input-field text-sm"
-                autoComplete="new-password"
-              />
-            </div>
-            {passwordError && <p className="text-xs text-red-600">{passwordError}</p>}
-            {passwordMsg && <p className="text-xs text-accent">{passwordMsg}</p>}
-            <div className="flex flex-wrap gap-2">
+              {emailError && <p className="text-xs text-red-600">{emailError}</p>}
+              {emailMsg && <p className="text-xs text-accent">{emailMsg}</p>}
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={savingEmail}
+              >
+                {savingEmail ? "Saving…" : "Save email"}
+              </button>
+            </form>
+          ) : (
+            <p className="mt-5 border-t border-border pt-5 text-xs text-muted">
+              Email updates are not enabled for your account. Ask your admin if you need this.
+            </p>
+          )}
+
+          {canChangePassword ? (
+            <form
+              onSubmit={handleChangePassword}
+              className="mt-5 space-y-3 border-t border-border pt-5"
+            >
+              <p className="text-xs font-medium text-muted">Change password</p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Current password"
+                  className="input-field text-sm"
+                  autoComplete="current-password"
+                />
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="New password"
+                  className="input-field text-sm"
+                  autoComplete="new-password"
+                />
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                  className="input-field text-sm"
+                  autoComplete="new-password"
+                />
+              </div>
+              {passwordError && <p className="text-xs text-red-600">{passwordError}</p>}
+              {passwordMsg && <p className="text-xs text-accent">{passwordMsg}</p>}
               <button
                 type="submit"
                 className="btn-primary"
@@ -234,11 +300,18 @@ export function SettingsView({ user, onDemoChange }: SettingsViewProps) {
               >
                 {changingPassword ? "Updating…" : "Update password"}
               </button>
-              <button type="button" className="btn-ghost" onClick={handleSignOut}>
-                Sign out
-              </button>
-            </div>
-          </form>
+            </form>
+          ) : (
+            <p className="mt-5 border-t border-border pt-5 text-xs text-muted">
+              Password change is not enabled for your account. Ask your admin if you need this.
+            </p>
+          )}
+
+          <div className="mt-5 border-t border-border pt-5">
+            <button type="button" className="btn-ghost" onClick={handleSignOut}>
+              Sign out
+            </button>
+          </div>
         </div>
       </div>
 

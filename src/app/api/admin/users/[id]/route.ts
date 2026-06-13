@@ -3,6 +3,7 @@ import { requireMaster } from "@/lib/api-auth";
 import { hashPassword } from "@/lib/auth";
 import type { UserModules } from "@/lib/auth-types";
 import { connectDB } from "@/lib/mongodb";
+import { nameKeyFrom } from "@/lib/user-login";
 import { toUserDTO } from "@/lib/user-serializers";
 import { User } from "@/models/User";
 
@@ -24,8 +25,23 @@ export async function PATCH(
       return NextResponse.json({ error: "Cannot edit master admin" }, { status: 403 });
     }
 
-    if (typeof body.name === "string" && body.name.trim()) user.name = body.name.trim();
+    if (typeof body.name === "string" && body.name.trim()) {
+      const nextName = body.name.trim();
+      const nextKey = nameKeyFrom(nextName);
+      const clash = await User.findOne({ nameKey: nextKey, _id: { $ne: user._id } });
+      if (clash) {
+        return NextResponse.json({ error: "Another user already has this name" }, { status: 409 });
+      }
+      user.name = nextName;
+      user.nameKey = nextKey;
+    }
     if (typeof body.isActive === "boolean") user.isActive = body.isActive;
+    if (typeof body.emailUpdatesEnabled === "boolean") {
+      user.emailUpdatesEnabled = body.emailUpdatesEnabled;
+    }
+    if (typeof body.passwordChangeEnabled === "boolean") {
+      user.passwordChangeEnabled = body.passwordChangeEnabled;
+    }
     if (body.modules) {
       const m = body.modules as Partial<UserModules>;
       user.modules = {

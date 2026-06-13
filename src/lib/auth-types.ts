@@ -18,19 +18,25 @@ export const ALL_MODULES: (keyof UserModules)[] = [
 
 export interface SessionUser {
   id: string;
-  email: string;
+  email: string | null;
   name: string;
   role: UserRole;
   modules: UserModules;
+  notificationEmail: string | null;
+  emailUpdatesEnabled: boolean;
+  passwordChangeEnabled: boolean;
 }
 
 export interface UserDTO {
   id: string;
-  email: string;
+  email: string | null;
   name: string;
   role: UserRole;
   modules: UserModules;
   isActive: boolean;
+  notificationEmail: string | null;
+  emailUpdatesEnabled: boolean;
+  passwordChangeEnabled: boolean;
   createdAt: string;
   lastLoginAt: string | null;
 }
