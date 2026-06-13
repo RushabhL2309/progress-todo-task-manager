@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import type { AppPage } from "./Sidebar";
-import type { ReactNode } from "react";
 
 export type MobileNavItem = {
   id: AppPage;
@@ -12,7 +11,7 @@ export type MobileNavItem = {
   icon: ReactNode;
 };
 
-interface MobileNavDrawerProps {
+interface NavMenuDrawerProps {
   open: boolean;
   onClose: () => void;
   items: MobileNavItem[];
@@ -21,14 +20,14 @@ interface MobileNavDrawerProps {
   userName: string;
 }
 
-export function MobileNavDrawer({
+export function NavMenuDrawer({
   open,
   onClose,
   items,
   active,
   onNavigate,
   userName,
-}: MobileNavDrawerProps) {
+}: NavMenuDrawerProps) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -48,25 +47,22 @@ export function MobileNavDrawer({
     <>
       <button
         type="button"
-        className="fixed inset-0 z-[55] bg-ink/30 backdrop-blur-[1px] lg:hidden"
+        className="fixed inset-0 z-[55] bg-ink/25 backdrop-blur-[1px] lg:hidden"
         aria-label="Close menu"
         onClick={onClose}
       />
       <div
-        className="fixed inset-x-0 bottom-0 z-[56] max-h-[min(78vh,520px)] overflow-hidden rounded-t-2xl border border-border bg-surface shadow-2xl animate-slide-up lg:hidden"
+        className="fixed left-3 right-3 top-[calc(4.25rem+env(safe-area-inset-top,0px))] z-[56] mx-auto flex max-h-[min(72vh,520px)] max-w-6xl flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl animate-slide-down lg:hidden"
         role="dialog"
         aria-modal="true"
         aria-label="Navigation menu"
       >
-        <div className="flex justify-center border-b border-border py-3">
-          <div className="h-1 w-10 rounded-full bg-border" aria-hidden />
-        </div>
         <div className="border-b border-border px-4 py-3">
           <p className="text-sm font-semibold text-ink">{userName}</p>
           <p className="text-xs text-muted">Choose a section</p>
         </div>
-        <nav className="max-h-[calc(min(78vh,520px)-7rem)] overflow-y-auto p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
-          <ul className="space-y-1">
+        <nav className="overflow-y-auto p-3">
+          <ul className="grid gap-1 sm:grid-cols-2">
             {items.map((item) => {
               const isActive = active === item.id;
               return (
@@ -93,6 +89,9 @@ export function MobileNavDrawer({
             })}
           </ul>
         </nav>
+        <div className="border-t border-border px-4 py-2.5">
+          <p className="text-center text-[11px] text-muted">Routine 1pt · Extra 2pts</p>
+        </div>
       </div>
     </>
   );

@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import type { SessionUser, UserModules } from "@/lib/auth-types";
 import { effectiveModules, isMaster } from "@/lib/user-access";
-import { MobileNavDrawer } from "./MobileNavDrawer";
+import { NavMenuDrawer } from "./NavMenuDrawer";
 
 export type AppPage =
   | "grid"
@@ -20,6 +20,8 @@ interface SidebarProps {
   active: AppPage;
   user: SessionUser;
   onNavigate: (page: AppPage) => void;
+  title: string;
+  mobileTrailing?: ReactNode;
 }
 
 type NavItem = {
@@ -191,13 +193,13 @@ function NavButton({
   );
 }
 
-export function Sidebar({ active, user, onNavigate }: SidebarProps) {
+export function Sidebar({ active, user, onNavigate, title, mobileTrailing }: SidebarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const items = visibleNav(user);
-  const activeItem = items.find((item) => item.id === active);
 
   return (
     <>
+      {/* Desktop — left sidebar */}
       <aside
         className="fixed left-4 top-4 bottom-4 z-40 hidden w-[220px] flex-col rounded-2xl border border-border bg-surface/95 shadow-[0_8px_32px_rgba(26,26,26,0.08)] backdrop-blur-md lg:flex"
         aria-label="Main navigation"
@@ -240,7 +242,36 @@ export function Sidebar({ active, user, onNavigate }: SidebarProps) {
         </div>
       </aside>
 
-      <MobileNavDrawer
+      {/* Mobile — floating top bar */}
+      <header
+        className="fixed left-3 right-3 top-3 z-40 mx-auto max-w-6xl pt-[env(safe-area-inset-top,0px)] lg:hidden"
+        aria-label="Mobile navigation"
+      >
+        <div className="flex min-h-[52px] items-center gap-2 rounded-2xl border border-border bg-surface/95 px-2.5 py-2 shadow-[0_8px_32px_rgba(26,26,26,0.1)] backdrop-blur-md sm:gap-3 sm:px-3">
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-canvas text-ink transition-colors hover:border-accent/40"
+            aria-label="Open navigation menu"
+            aria-expanded={menuOpen}
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
+              <path d="M3 6H17M3 10H17M3 14H17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </button>
+
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-sm font-semibold text-ink">{title}</h1>
+            <p className="truncate text-[10px] text-muted">{user.name}</p>
+          </div>
+
+          {mobileTrailing && (
+            <div className="flex shrink-0 items-center gap-1">{mobileTrailing}</div>
+          )}
+        </div>
+      </header>
+
+      <NavMenuDrawer
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
         items={items}
@@ -248,23 +279,6 @@ export function Sidebar({ active, user, onNavigate }: SidebarProps) {
         onNavigate={onNavigate}
         userName={user.name}
       />
-
-      <div
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] pt-2 shadow-[0_-4px_24px_rgba(26,26,26,0.06)] backdrop-blur-md lg:hidden"
-      >
-        <button
-          type="button"
-          onClick={() => setMenuOpen(true)}
-          className="flex w-full min-h-[48px] items-center justify-center gap-2.5 rounded-xl border border-border bg-canvas px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-accent/40"
-          aria-label="Open navigation menu"
-          aria-expanded={menuOpen}
-        >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
-            <path d="M3 6H17M3 10H17M3 14H17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-          <span className="truncate">{activeItem?.label ?? "Menu"}</span>
-        </button>
-      </div>
     </>
   );
 }
@@ -276,4 +290,8 @@ export function defaultPageForUser(user: SessionUser): AppPage {
 
 export function canAccessPage(user: SessionUser, page: AppPage): boolean {
   return visibleNav(user).some((item) => item.id === page);
+}
+
+export function pageLabel(page: AppPage): string {
+  return NAV.find((item) => item.id === page)?.label ?? "Daily Progress";
 }

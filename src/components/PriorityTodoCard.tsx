@@ -11,6 +11,7 @@ interface PriorityTodoCardProps {
   onToggleScheduled?: (taskId: string, date: string) => void;
   onToggleExtra?: (id: string) => void;
   onViewAll?: () => void;
+  fullWidth?: boolean;
 }
 
 export function PriorityTodoCard({
@@ -19,6 +20,7 @@ export function PriorityTodoCard({
   onToggleScheduled,
   onToggleExtra,
   onViewAll,
+  fullWidth,
 }: PriorityTodoCardProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -44,15 +46,17 @@ export function PriorityTodoCard({
     }
   }
 
+  const widthClass = fullWidth ? "max-w-none" : "max-w-[300px] sm:max-w-xs";
+
   if (loading) {
     return (
-      <div className="h-9 w-full max-w-[280px] animate-pulse rounded-lg bg-border/40 sm:max-w-xs" />
+      <div className={`h-9 w-full animate-pulse rounded-lg bg-border/40 ${fullWidth ? "" : "max-w-[280px] sm:max-w-xs"}`} />
     );
   }
 
   if (!top) {
     return (
-      <div className="flex h-9 items-center gap-1.5 rounded-lg border border-accent/20 bg-accent-light/60 px-3">
+      <div className="flex h-9 w-full items-center gap-1.5 rounded-lg border border-accent/20 bg-accent-light/60 px-3">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-accent" aria-hidden>
           <path d="M3 7L5.5 9.5L11 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -64,8 +68,8 @@ export function PriorityTodoCard({
   const isToday = top.date === todayKey;
 
   return (
-    <div ref={ref} className="relative w-full max-w-[300px] sm:max-w-xs">
-      <div className="flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-2 shadow-sm">
+    <div ref={ref} className={`relative w-full ${widthClass}`}>
+      <div className="flex h-9 items-center gap-1.5 rounded-lg border border-border bg-canvas px-2">
         <button
           type="button"
           onClick={() => handleToggle(top)}

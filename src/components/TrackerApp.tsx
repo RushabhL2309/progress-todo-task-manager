@@ -23,7 +23,7 @@ import { DailyTodoView } from "./DailyTodoView";
 import { DashboardCharts } from "./DashboardCharts";
 import { DateNavigator } from "./DateNavigator";
 import { GridView } from "./GridView";
-import { Sidebar, canAccessPage, defaultPageForUser, type AppPage } from "./Sidebar";
+import { Sidebar, canAccessPage, defaultPageForUser, pageLabel, type AppPage } from "./Sidebar";
 import { TasksView } from "./TasksView";
 import { PriorityTodoCard } from "./PriorityTodoCard";
 import { ProjectsView } from "./ProjectsView";
@@ -340,24 +340,7 @@ export function TrackerApp() {
       .catch(() => setProjects([]));
   }, [user]);
 
-  const pageTitle =
-    page === "grid"
-      ? "Progress Grid"
-      : page === "dashboard"
-        ? "Dashboard"
-        : page === "projects"
-          ? "Projects"
-          : page === "clients"
-            ? "Client updates"
-            : page === "chat"
-              ? "Team chat"
-              : page === "admin"
-                ? "Admin"
-                : page === "todo"
-                  ? "Daily To-Do"
-                  : page === "tasks"
-                    ? "Manage Tasks"
-                    : "Settings";
+  const pageTitle = pageLabel(page);
 
   const routinePending = scheduledTasks
     .filter((t) => !grid?.completions[completionKey(t.id, todoDate)])
@@ -401,41 +384,56 @@ export function TrackerApp() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-canvas">
       <Toast message={toastMessage} onDone={() => setToastMessage(null)} />
-      <Sidebar active={page} user={user} onNavigate={setPage} />
+      <Sidebar
+        active={page}
+        user={user}
+        onNavigate={setPage}
+        title={pageTitle}
+        mobileTrailing={
+          <>
+            <NotificationBell onNavigate={handleNotificationNavigate} onToast={showToast} />
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="btn-ghost !min-h-9 !min-w-9 px-2.5 text-xs font-medium"
+              title={`Sign out ${user.name}`}
+            >
+              Out
+            </button>
+          </>
+        }
+      />
 
-      <div className="min-h-screen pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] lg:pb-0 lg:pl-[252px]">
-        <header className="sticky top-0 z-30 border-b border-border bg-surface/95 backdrop-blur-md">
-          <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-2.5 sm:px-6 sm:py-3 lg:px-8">
-            <div className="flex min-w-0 items-center justify-between gap-2">
-              <h1 className="min-w-0 flex-1 truncate text-base font-semibold text-ink sm:text-lg">
-                {pageTitle}
-              </h1>
-              <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-                <NotificationBell onNavigate={handleNotificationNavigate} onToast={showToast} />
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="btn-ghost !min-h-9 px-2.5 text-xs font-medium sm:px-3 sm:text-sm"
-                  title={`Sign out ${user.name}`}
-                >
-                  <span className="hidden sm:inline">Sign out</span>
-                  <span className="sm:hidden">Out</span>
-                </button>
-              </div>
-            </div>
-            <div className="hidden min-w-0 sm:block">
-              <PriorityTodoCard
-                items={stats?.todoItems ?? []}
-                loading={loading}
-                onToggleScheduled={(taskId, date) => handleToggleCompletion(taskId, date, true)}
-                onToggleExtra={(id) => handleToggleExtra(id, true)}
-                onViewAll={handleViewAllTodos}
-              />
+      <div className="min-h-screen pt-[calc(4.75rem+env(safe-area-inset-top,0px))] lg:pt-0 lg:pl-[252px]">
+        {/* Desktop — floating top bars (sticky) */}
+        <div className="sticky top-4 z-30 mx-auto hidden max-w-6xl space-y-2 px-6 pb-2 pt-4 lg:block lg:px-8">
+          <div className="flex min-h-[52px] items-center gap-3 rounded-2xl border border-border bg-surface/95 px-4 py-2.5 shadow-[0_8px_32px_rgba(26,26,26,0.08)] backdrop-blur-md">
+            <h1 className="min-w-0 flex-1 truncate text-base font-semibold text-ink">{pageTitle}</h1>
+            <div className="flex shrink-0 items-center gap-2">
+              <NotificationBell onNavigate={handleNotificationNavigate} onToast={showToast} />
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="btn-ghost !min-h-9 px-3 text-sm font-medium"
+                title={`Sign out ${user.name}`}
+              >
+                Sign out
+              </button>
             </div>
           </div>
-        </header>
+          <div className="rounded-2xl border border-border bg-surface/95 px-3 py-2 shadow-[0_4px_20px_rgba(26,26,26,0.06)] backdrop-blur-md">
+            <PriorityTodoCard
+              fullWidth
+              items={stats?.todoItems ?? []}
+              loading={loading}
+              onToggleScheduled={(taskId, date) => handleToggleCompletion(taskId, date, true)}
+              onToggleExtra={(id) => handleToggleExtra(id, true)}
+              onViewAll={handleViewAllTodos}
+            />
+          </div>
+        </div>
 
-        <main className="mx-auto max-w-6xl min-w-0 overflow-x-hidden px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+        <main className="mx-auto max-w-6xl min-w-0 overflow-x-hidden px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:pt-2">
           {error && (
             <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
