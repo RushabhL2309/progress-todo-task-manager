@@ -150,6 +150,7 @@ function PaymentChecksEditor({
 interface ClientDetailDrawerProps {
   clientId: string | null;
   assignable: UserDTO[];
+  isMaster?: boolean;
   onClose: () => void;
   onUpdated: () => void;
 }
@@ -157,6 +158,7 @@ interface ClientDetailDrawerProps {
 export function ClientDetailDrawer({
   clientId,
   assignable,
+  isMaster = false,
   onClose,
   onUpdated,
 }: ClientDetailDrawerProps) {
@@ -177,6 +179,7 @@ export function ClientDetailDrawer({
   const [reminderAssignee, setReminderAssignee] = useState("");
   const [reminderSimple, setReminderSimple] = useState(false);
   const [addingReminder, setAddingReminder] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async (id: string) => {
     setLoading(true);
@@ -291,6 +294,21 @@ export function ClientDetailDrawer({
   }
 
   const nextStage = client ? STAGE_NEXT[client.stage] : null;
+
+  async function handleDelete() {
+    if (!client) return;
+    if (!confirm(`Delete daily client "${client.name}"? This cannot be undone.`)) return;
+    setDeleting(true);
+    try {
+      const res = await apiFetch(`/api/clients/${client.id}`, { method: "DELETE" });
+      if (res.ok) {
+        onUpdated();
+        onClose();
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   return (
     <Drawer
@@ -457,6 +475,17 @@ export function ClientDetailDrawer({
                   className="btn-primary w-full !min-h-10 text-sm"
                 >
                   {shifting ? "Shifting…" : nextStage.label}
+                </button>
+              )}
+
+              {isMaster && (
+                <button
+                  type="button"
+                  disabled={deleting}
+                  onClick={() => void handleDelete()}
+                  className="w-full rounded-lg border border-red-200 px-3 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  {deleting ? "Deleting…" : "Delete client"}
                 </button>
               )}
             </div>

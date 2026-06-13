@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { requireModule } from "@/lib/api-auth";
+import { requireMaster, requireModule } from "@/lib/api-auth";
 import { isDemoMode } from "@/lib/demo-mode";
 import { demoProjectsStore } from "@/lib/demo-projects-store";
 import { connectDB } from "@/lib/mongodb";
 import { canAccessProject } from "@/lib/permissions";
 import { toProjectDTO, toProjectItemDTO, toProjectUpdateDTO } from "@/lib/project-serializers";
 import { mergeProjectTimeline, toProjectActivityDTO } from "@/lib/project-activity";
+import { ClientProject } from "@/models/ClientProject";
 import { Project } from "@/models/Project";
 import { ProjectItem } from "@/models/ProjectItem";
 import { ProjectUpdate } from "@/models/ProjectUpdate";
@@ -119,7 +120,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireModule(request, "projects");
+    const auth = await requireMaster(request);
     if (auth.error) return auth.error;
 
     const { id } = await params;
@@ -132,11 +133,13 @@ export async function DELETE(
 
     await connectDB();
     const project = await Project.findById(id);
-    if (!project || !canAccessProject(auth.user, project)) {
+    if (!project) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
     const itemIds = await ProjectItem.find({ projectId: id }).distinct("_id");
+
+    await ClientProject.updateMany({ linkedProjectId: id }, { $set: { linkedProjectId: null } });
 
     await Promise.all([
       ProjectItem.deleteMany({ projectId: id }),

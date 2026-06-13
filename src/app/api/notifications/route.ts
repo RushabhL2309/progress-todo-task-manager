@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import { requireAuth } from "@/lib/api-auth";
 import type { AppNotification } from "@/lib/auth-types";
 import { connectDB } from "@/lib/mongodb";
-import { clientAccessFilter, hasModule, projectAccessFilter } from "@/lib/permissions";
+import { clientAccessFilter, hasModule, projectAccessFilter, viewsAllPlatformData } from "@/lib/permissions";
 import { ChatGroup } from "@/models/ChatGroup";
 import { ChatMessage } from "@/models/ChatMessage";
 import { ChatRead } from "@/models/ChatRead";
@@ -24,8 +24,7 @@ export async function GET(request: Request) {
   const now = today();
 
   if (hasModule(auth.user, "client_updates")) {
-    const clientFilter =
-      auth.user.role === "master" ? {} : clientAccessFilter(auth.user);
+    const clientFilter = clientAccessFilter(auth.user);
     const clients = await ClientProject.find({
       ...clientFilter,
       followUpDate: { $ne: null },
@@ -49,14 +48,13 @@ export async function GET(request: Request) {
       }
     }
 
-    const accessOr =
-      auth.user.role === "master"
-        ? []
-        : [
-            { assignedUserId: new mongoose.Types.ObjectId(uid) },
-            { createdBy: new mongoose.Types.ObjectId(uid) },
-            { assignedUserId: null, simple: true },
-          ];
+    const accessOr = viewsAllPlatformData(auth.user)
+      ? []
+      : [
+          { assignedUserId: new mongoose.Types.ObjectId(uid) },
+          { createdBy: new mongoose.Types.ObjectId(uid) },
+          { assignedUserId: null, simple: true },
+        ];
 
     const dueOr = [
       { dueDate: { $lte: now, $nin: [null, ""] } },
@@ -157,8 +155,9 @@ export async function GET(request: Request) {
   }
 
   if (hasModule(auth.user, "chat")) {
-    const groupFilter =
-      auth.user.role === "master" ? {} : { memberIds: new mongoose.Types.ObjectId(uid) };
+    const groupFilter = viewsAllPlatformData(auth.user)
+      ? {}
+      : { memberIds: new mongoose.Types.ObjectId(uid) };
     const groups = await ChatGroup.find(groupFilter);
     for (const g of groups) {
       const read = await ChatRead.findOne({ userId: uid, groupId: g._id });

@@ -12,10 +12,6 @@ export async function GET(request: Request) {
   }
 
   await connectDB();
-  const filter =
-    user.role === "master"
-      ? { isActive: true }
-      : { isActive: true, role: "user" as const };
-  const users = await User.find(filter).sort({ name: 1 });
+  const users = await User.find({ isActive: true }).sort({ name: 1 });
   return NextResponse.json(users.map(toUserDTO));
 }

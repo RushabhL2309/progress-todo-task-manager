@@ -1,5 +1,10 @@
 export type UserRole = "master" | "user";
 
+/** Master admin: platform = all data; personal = only Rushabh's own data */
+export type MasterDataScope = "platform" | "personal";
+
+export const MASTER_DISPLAY_NAME = "Rushabh";
+
 export interface UserModules {
   todo: boolean;
   tracker: boolean;
@@ -25,6 +30,7 @@ export interface SessionUser {
   notificationEmail: string | null;
   emailUpdatesEnabled: boolean;
   passwordChangeEnabled: boolean;
+  masterDataScope: MasterDataScope;
 }
 
 export interface UserDTO {
@@ -37,6 +43,7 @@ export interface UserDTO {
   notificationEmail: string | null;
   emailUpdatesEnabled: boolean;
   passwordChangeEnabled: boolean;
+  masterDataScope: MasterDataScope;
   createdAt: string;
   lastLoginAt: string | null;
 }

@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import type { SessionUser } from "./auth-types";
-import { canAccessProject, isMaster, projectAccessFilter } from "./permissions";
+import { canAccessProject, projectAccessFilter, viewsAllPlatformData } from "./permissions";
 import type { ProjectDocument } from "@/models/Project";
 
 export function taskListFilter(user: SessionUser, accessibleProjectIds: mongoose.Types.ObjectId[]) {
@@ -10,7 +10,7 @@ export function taskListFilter(user: SessionUser, accessibleProjectIds: mongoose
     { projectId: null, createdBy: uid },
     { projectId: null, assignedUserId: uid },
   ];
-  if (isMaster(user)) {
+  if (viewsAllPlatformData(user)) {
     clauses.push({ projectId: null });
   }
   return { $or: clauses };
@@ -45,7 +45,7 @@ export function canAccessTaskItem(
     return canAccessProject(user, project);
   }
   if (!item.projectId) {
-    if (isMaster(user)) return true;
+    if (viewsAllPlatformData(user)) return true;
     const createdBy =
       typeof item.createdBy === "string" ? item.createdBy : item.createdBy?.toString();
     const assigned =

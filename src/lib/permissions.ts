@@ -1,9 +1,9 @@
 import type { SessionUser, UserModules } from "./auth-types";
+import { viewsAllPlatformData, type AccessUser } from "./master-data-scope";
 import { effectiveModules as clientEffectiveModules } from "./user-access";
 import mongoose from "mongoose";
 
-/** Subset used by DB access filters (id + role only). */
-export type AccessUser = Pick<SessionUser, "id" | "role">;
+export { viewsAllPlatformData, type AccessUser } from "./master-data-scope";
 
 export function effectiveModules(user: SessionUser): UserModules {
   return clientEffectiveModules(user);
@@ -17,7 +17,7 @@ export function isMaster(user: Pick<SessionUser, "role">): boolean {
   return user.role === "master";
 }
 
-/** Project visible if creator, assignee, or master admin */
+/** Project visible if creator, assignee, or master in platform view */
 export function canAccessProject(
   user: AccessUser,
   project: {
@@ -25,7 +25,7 @@ export function canAccessProject(
     assignedUserIds?: { toString(): string }[];
   }
 ): boolean {
-  if (isMaster(user)) return true;
+  if (viewsAllPlatformData(user)) return true;
   const uid = user.id;
   const createdBy =
     typeof project.createdBy === "string"
@@ -36,23 +36,23 @@ export function canAccessProject(
 }
 
 export function projectAccessFilter(user: AccessUser) {
-  if (isMaster(user)) return {};
+  if (viewsAllPlatformData(user)) return {};
   return {
     $or: [{ createdBy: user.id }, { assignedUserIds: user.id }],
   };
 }
 
 export function clientAccessFilter(user: AccessUser) {
-  if (isMaster(user)) return {};
+  if (viewsAllPlatformData(user)) return {};
   return {
     $or: [{ createdBy: user.id }, { assignedUserIds: user.id }],
   };
 }
 
-/** Scheduled + extra tasks scoped per user; master also sees unclaimed pre-auth rows. */
+/** Scheduled + extra tasks scoped per user; platform master sees unclaimed legacy rows too */
 export function personalTaskFilter(user: AccessUser) {
   const uid = new mongoose.Types.ObjectId(user.id);
-  if (isMaster(user)) {
+  if (viewsAllPlatformData(user)) {
     return {
       $or: [{ userId: uid }, { userId: null }, { userId: { $exists: false } }],
     };

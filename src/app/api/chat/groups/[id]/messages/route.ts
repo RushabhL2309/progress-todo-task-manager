@@ -7,8 +7,13 @@ import { ChatGroup } from "@/models/ChatGroup";
 import { ChatMessage } from "@/models/ChatMessage";
 import { User } from "@/models/User";
 
-function canAccessGroup(userId: string, role: string, group: { memberIds: { toString(): string }[] }) {
-  if (role === "master") return true;
+function canAccessGroup(
+  userId: string,
+  role: string,
+  masterDataScope: string,
+  group: { memberIds: { toString(): string }[] }
+) {
+  if (role === "master" && masterDataScope !== "personal") return true;
   return group.memberIds.some((id) => id.toString() === userId);
 }
 
@@ -30,7 +35,7 @@ export async function GET(
 
   await connectDB();
   const group = await ChatGroup.findById(id);
-  if (!group || !canAccessGroup(auth.user.id, auth.user.role, group)) {
+  if (!group || !canAccessGroup(auth.user.id, auth.user.role, auth.user.masterDataScope, group)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -89,7 +94,7 @@ export async function POST(
 
     await connectDB();
     const group = await ChatGroup.findById(id);
-    if (!group || !canAccessGroup(auth.user.id, auth.user.role, group)) {
+    if (!group || !canAccessGroup(auth.user.id, auth.user.role, auth.user.masterDataScope, group)) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 

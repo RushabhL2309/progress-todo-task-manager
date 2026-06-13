@@ -16,7 +16,9 @@ type ProjectTab = "dashboard" | "issues" | "activity";
 interface ProjectDetailViewProps {
   detail: ProjectDetailDTO;
   loading: boolean;
+  isMaster?: boolean;
   onBack: () => void;
+  onDelete?: () => Promise<void>;
   onAddItem: (data: {
     title: string;
     description?: string;
@@ -36,7 +38,9 @@ interface ProjectDetailViewProps {
 export function ProjectDetailView({
   detail,
   loading,
+  isMaster = false,
   onBack,
+  onDelete,
   onAddItem,
   onCompleteWork,
   onCloseProject,
@@ -45,6 +49,7 @@ export function ProjectDetailView({
   const [completeOpen, setCompleteOpen] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
   const [completeItemId, setCompleteItemId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const openItems = detail.items.filter((i) => i.status === "open");
   const { project } = detail;
@@ -55,6 +60,17 @@ export function ProjectDetailView({
   function openComplete(itemId?: string) {
     setCompleteItemId(itemId ?? null);
     setCompleteOpen(true);
+  }
+
+  async function handleDelete() {
+    if (!onDelete) return;
+    if (!confirm(`Delete project "${project.name}" and all its tasks? This cannot be undone.`)) return;
+    setDeleting(true);
+    try {
+      await onDelete();
+    } finally {
+      setDeleting(false);
+    }
   }
 
   const tabs: { id: ProjectTab; label: string }[] = [
@@ -106,20 +122,32 @@ export function ProjectDetailView({
                 )}
               </div>
             </div>
-            {project.status !== "completed" && (
-              <button
-                type="button"
-                onClick={() => setCloseOpen(true)}
-                className="btn-ghost shrink-0 !min-h-10 border border-border text-sm"
-              >
-                Close project
-              </button>
-            )}
-            {project.status === "completed" && (
-              <span className="rounded-lg bg-canvas px-3 py-1.5 text-xs font-medium text-muted">
-                Completed
-              </span>
-            )}
+            <div className="flex shrink-0 flex-wrap gap-2">
+              {project.status !== "completed" && (
+                <button
+                  type="button"
+                  onClick={() => setCloseOpen(true)}
+                  className="btn-ghost !min-h-10 border border-border text-sm"
+                >
+                  Close project
+                </button>
+              )}
+              {project.status === "completed" && (
+                <span className="rounded-lg bg-canvas px-3 py-1.5 text-xs font-medium text-muted">
+                  Completed
+                </span>
+              )}
+              {isMaster && onDelete && (
+                <button
+                  type="button"
+                  disabled={deleting}
+                  onClick={() => void handleDelete()}
+                  className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  {deleting ? "Deleting…" : "Delete project"}
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="border-t border-border px-4 pb-4 sm:px-5">

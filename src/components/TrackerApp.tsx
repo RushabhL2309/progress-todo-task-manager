@@ -505,7 +505,7 @@ export function TrackerApp() {
           )}
 
           {page === "projects" && (
-            <ProjectsView onWorkLogged={refreshQuiet} />
+            <ProjectsView onWorkLogged={refreshQuiet} isMaster={user.role === "master"} />
           )}
 
           {page === "todo" && (
@@ -542,14 +542,27 @@ export function TrackerApp() {
             />
           )}
 
-          {page === "clients" && <ClientUpdatesView />}
+          {page === "clients" && <ClientUpdatesView isMaster={user.role === "master"} />}
 
           {page === "chat" && <ChatView />}
 
           {page === "admin" && <AdminView />}
 
           {page === "settings" && (
-            <SettingsView user={user} onDemoChange={refreshQuiet} />
+            <SettingsView
+              user={user}
+              onDemoChange={refreshQuiet}
+              onUserPrefsChange={(next) => {
+                setUser(next);
+                void refreshQuiet();
+                if (hasModule(next, "projects")) {
+                  apiFetch("/api/projects")
+                    .then((r) => (r.ok ? r.json() : []))
+                    .then((list) => setProjects(list))
+                    .catch(() => {});
+                }
+              }}
+            />
           )}
         </main>
       </div>

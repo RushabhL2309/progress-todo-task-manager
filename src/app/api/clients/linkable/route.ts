@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   await connectDB();
   const filter = {
     linkedProjectId: null,
-    ...(auth.user.role === "master" ? {} : clientAccessFilter(auth.user)),
+    ...(clientAccessFilter(auth.user)),
   };
   const items = await ClientProject.find(filter).sort({ updatedAt: -1 });
   return NextResponse.json(items.map(toClientProjectDTO));

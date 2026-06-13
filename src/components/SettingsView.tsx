@@ -7,7 +7,8 @@ import {
   getDemoModeEnabled,
   setDemoModeEnabled,
 } from "@/lib/api-client";
-import type { SessionUser } from "@/lib/auth-types";
+import type { MasterDataScope, SessionUser } from "@/lib/auth-types";
+import { MASTER_DISPLAY_NAME } from "@/lib/auth-types";
 import {
   getProjectLayoutView,
   setProjectLayoutView,
@@ -25,9 +26,10 @@ interface HealthResponse {
 interface SettingsViewProps {
   user: SessionUser;
   onDemoChange?: () => void;
+  onUserPrefsChange?: (user: SessionUser) => void;
 }
 
-export function SettingsView({ user, onDemoChange }: SettingsViewProps) {
+export function SettingsView({ user, onDemoChange, onUserPrefsChange }: SettingsViewProps) {
   const router = useRouter();
   const isMaster = user.role === "master";
 
@@ -46,10 +48,13 @@ export function SettingsView({ user, onDemoChange }: SettingsViewProps) {
   const canSetEmail = user.emailUpdatesEnabled;
   const canChangePassword = user.passwordChangeEnabled;
 
-  const [demoEnabled, setDemoEnabled] = useState(true);
+  const [demoEnabled, setDemoEnabled] = useState(false);
   const [dbStatus, setDbStatus] = useState("checking");
   const [dbError, setDbError] = useState<string | null>(null);
   const [hasMongoUri, setHasMongoUri] = useState(false);
+  const [dataScope, setDataScope] = useState<MasterDataScope>(user.masterDataScope ?? "platform");
+  const [scopeMsg, setScopeMsg] = useState<string | null>(null);
+  const [savingScope, setSavingScope] = useState(false);
 
   const checkHealth = useCallback(async (useDemo: boolean) => {
     setDbStatus("checking");
@@ -87,6 +92,10 @@ export function SettingsView({ user, onDemoChange }: SettingsViewProps) {
   useEffect(() => {
     setNotificationEmail(user.notificationEmail ?? "");
   }, [user.notificationEmail, user.emailUpdatesEnabled]);
+
+  useEffect(() => {
+    setDataScope(user.masterDataScope ?? "platform");
+  }, [user.masterDataScope]);
 
   useEffect(() => {
     if (!isMaster) return;
@@ -151,6 +160,38 @@ export function SettingsView({ user, onDemoChange }: SettingsViewProps) {
     }
   }
 
+  async function handleDataScopeChange(scope: MasterDataScope) {
+    setDataScope(scope);
+    setScopeMsg(null);
+    setSavingScope(true);
+    try {
+      const res = await apiFetch("/api/auth/master-data-scope", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ masterDataScope: scope }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setScopeMsg(data.error ?? "Failed to update");
+        setDataScope(user.masterDataScope ?? "platform");
+        return;
+      }
+      if (data.user) {
+        onUserPrefsChange?.(data.user as SessionUser);
+      }
+      setScopeMsg(
+        scope === "platform"
+          ? "Showing all platform data"
+          : `Showing only ${MASTER_DISPLAY_NAME}'s data`
+      );
+    } catch {
+      setScopeMsg("Something went wrong");
+      setDataScope(user.masterDataScope ?? "platform");
+    } finally {
+      setSavingScope(false);
+    }
+  }
+
   async function handleSaveNotificationEmail(e: FormEvent) {
     e.preventDefault();
     setEmailMsg(null);
@@ -203,6 +244,49 @@ export function SettingsView({ user, onDemoChange }: SettingsViewProps) {
           </span>
         )}
       </div>
+
+      {isMaster && (
+        <div className="card p-4 sm:p-5">
+          <h2 className="text-sm font-semibold text-ink">Data view mode</h2>
+          <p className="mt-1 text-xs text-muted">
+            Choose whether you see everything on the platform or only your own work as{" "}
+            {MASTER_DISPLAY_NAME}
+          </p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              disabled={savingScope}
+              onClick={() => void handleDataScopeChange("platform")}
+              className={`rounded-xl border px-4 py-3 text-left transition-colors ${
+                dataScope === "platform"
+                  ? "border-accent bg-accent-light text-accent"
+                  : "border-border bg-canvas text-ink hover:bg-canvas/80"
+              }`}
+            >
+              <span className="block text-sm font-medium">Platform (all data)</span>
+              <span className="mt-0.5 block text-xs opacity-80">
+                All tasks, projects, and client updates
+              </span>
+            </button>
+            <button
+              type="button"
+              disabled={savingScope}
+              onClick={() => void handleDataScopeChange("personal")}
+              className={`rounded-xl border px-4 py-3 text-left transition-colors ${
+                dataScope === "personal"
+                  ? "border-accent bg-accent-light text-accent"
+                  : "border-border bg-canvas text-ink hover:bg-canvas/80"
+              }`}
+            >
+              <span className="block text-sm font-medium">{MASTER_DISPLAY_NAME} only</span>
+              <span className="mt-0.5 block text-xs opacity-80">
+                Same view as a regular user — your own data only
+              </span>
+            </button>
+          </div>
+          {scopeMsg && <p className="mt-3 text-xs text-accent">{scopeMsg}</p>}
+        </div>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="card p-4 sm:p-5">

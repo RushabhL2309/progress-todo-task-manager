@@ -4,17 +4,14 @@ import { requireModule } from "@/lib/api-auth";
 import { isDemoMode } from "@/lib/demo-mode";
 import { demoProjectsStore } from "@/lib/demo-projects-store";
 import { connectDB } from "@/lib/mongodb";
+import type { SessionUser } from "@/lib/auth-types";
 import { projectAccessFilter } from "@/lib/permissions";
-import type { UserRole } from "@/lib/auth-types";
 import { toProjectDTO, toProjectItemDTO } from "@/lib/project-serializers";
 import { Project } from "@/models/Project";
 import { ProjectItem } from "@/models/ProjectItem";
 
-async function listWithStats(userId: string, role: string) {
-  const access = projectAccessFilter({
-    id: userId,
-    role: role as UserRole,
-  });
+async function listWithStats(user: SessionUser) {
+  const access = projectAccessFilter(user);
   const projects = await Project.find(access).sort({ updatedAt: -1 });
   const ids = projects.map((p) => p._id);
   const allItems = await ProjectItem.find({ projectId: { $in: ids } }).sort({
@@ -44,7 +41,7 @@ export async function GET(request: Request) {
     }
 
     await connectDB();
-    return NextResponse.json(await listWithStats(auth.user.id, auth.user.role));
+    return NextResponse.json(await listWithStats(auth.user));
   } catch (error) {
     console.error("GET /api/projects", error);
     return NextResponse.json({ error: "Failed to fetch projects" }, { status: 500 });

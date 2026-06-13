@@ -21,5 +21,6 @@ export function getRequestUser(request: Request): SessionUser | null {
     notificationEmail: null,
     emailUpdatesEnabled: false,
     passwordChangeEnabled: false,
+    masterDataScope: "personal" as const,
   };
 }

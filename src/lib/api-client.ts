@@ -1,10 +1,10 @@
 export const DEMO_MODE_STORAGE_KEY = "demo-mode-enabled";
 
-/** Demo data is ON by default until user turns it off in Settings */
+/** Demo data is OFF by default — turn on in Settings when needed */
 export function getDemoModeEnabled(): boolean {
-  if (typeof window === "undefined") return true;
+  if (typeof window === "undefined") return false;
   const stored = localStorage.getItem(DEMO_MODE_STORAGE_KEY);
-  if (stored === null) return true;
+  if (stored === null) return false;
   return stored === "true";
 }
 

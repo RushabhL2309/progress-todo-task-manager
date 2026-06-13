@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { requireModule } from "@/lib/api-auth";
+import { requireMaster, requireModule } from "@/lib/api-auth";
 import { toClientEventDTO, toClientProjectDTO, toClientReminderDTO } from "@/lib/client-serializers";
 import { connectDB } from "@/lib/mongodb";
 import { clientAccessFilter } from "@/lib/permissions";
@@ -41,7 +41,7 @@ export async function GET(
   await connectDB();
   const doc = await ClientProject.findOne({
     _id: id,
-    ...(auth.user.role === "master" ? {} : clientAccessFilter(auth.user)),
+    ...(clientAccessFilter(auth.user)),
   });
   if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -90,7 +90,7 @@ export async function PATCH(
 
     const doc = await ClientProject.findOne({
       _id: id,
-      ...(auth.user.role === "master" ? {} : clientAccessFilter(auth.user)),
+      ...(clientAccessFilter(auth.user)),
     });
     if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -166,5 +166,36 @@ export async function PATCH(
   } catch (error) {
     console.error("PATCH /api/clients/[id]", error);
     return NextResponse.json({ error: "Failed to update" }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = await requireMaster(request);
+  if (auth.error) return auth.error;
+
+  try {
+    const { id } = await params;
+    await connectDB();
+
+    const doc = await ClientProject.findById(id);
+    if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    if (doc.linkedProjectId) {
+      await Project.findByIdAndUpdate(doc.linkedProjectId, { $set: { linkedClientId: null } });
+    }
+
+    await Promise.all([
+      ClientProjectEvent.deleteMany({ clientProjectId: id }),
+      ClientReminder.deleteMany({ clientProjectId: id }),
+      ClientProject.findByIdAndDelete(id),
+    ]);
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("DELETE /api/clients/[id]", error);
+    return NextResponse.json({ error: "Failed to delete client" }, { status: 500 });
   }
 }

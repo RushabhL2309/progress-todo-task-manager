@@ -40,7 +40,7 @@ function AssigneePicker({
   );
 }
 
-export function ClientUpdatesView() {
+export function ClientUpdatesView({ isMaster = false }: { isMaster?: boolean }) {
   const [clients, setClients] = useState<ClientProjectDTO[]>([]);
   const [assignable, setAssignable] = useState<UserDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,6 +48,16 @@ export function ClientUpdatesView() {
   const [newStage, setNewStage] = useState<ClientStage>("enquiry");
   const [newAssignees, setNewAssignees] = useState<string[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [collapsedStages, setCollapsedStages] = useState<Set<ClientStage>>(new Set());
+
+  function toggleStageCollapse(stageId: ClientStage) {
+    setCollapsedStages((prev) => {
+      const next = new Set(prev);
+      if (next.has(stageId)) next.delete(stageId);
+      else next.add(stageId);
+      return next;
+    });
+  }
 
   const load = useCallback(async () => {
     const [cRes, uRes] = await Promise.all([
@@ -123,12 +133,41 @@ export function ClientUpdatesView() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {STAGES.map((stage) => {
             const items = clients.filter((c) => c.stage === stage.id);
+            const collapsed = collapsedStages.has(stage.id);
             return (
               <div key={stage.id} className={`rounded-xl border p-3 ${stage.color}`}>
-                <h2 className="text-sm font-semibold text-ink">
-                  {stage.label} ({items.length})
-                </h2>
-                <ul className="mt-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-sm font-semibold text-ink">
+                    {stage.label} ({items.length})
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => toggleStageCollapse(stage.id)}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-surface/80 text-muted transition-colors hover:text-ink md:hidden"
+                    aria-expanded={!collapsed}
+                    aria-label={collapsed ? `Show ${stage.label} clients` : `Hide ${stage.label} clients`}
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 14 14"
+                      fill="none"
+                      aria-hidden
+                      className={`transition-transform duration-200 ${collapsed ? "" : "rotate-180"}`}
+                    >
+                      <path
+                        d="M3.5 5.25L7 8.75L10.5 5.25"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <ul
+                  className={`mt-3 space-y-2 ${collapsed ? "hidden md:block" : ""}`}
+                >
                   {items.map((c) => (
                     <li key={c.id}>
                       <button
@@ -164,6 +203,7 @@ export function ClientUpdatesView() {
       <ClientDetailDrawer
         clientId={selectedId}
         assignable={assignable}
+        isMaster={isMaster}
         onClose={() => setSelectedId(null)}
         onUpdated={load}
       />

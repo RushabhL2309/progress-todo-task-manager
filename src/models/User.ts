@@ -19,6 +19,11 @@ const UserSchema = new Schema(
     notificationEmail: { type: String, default: null, lowercase: true, trim: true },
     emailUpdatesEnabled: { type: Boolean, default: false },
     passwordChangeEnabled: { type: Boolean, default: false },
+    masterDataScope: {
+      type: String,
+      enum: ["platform", "personal"],
+      default: "platform",
+    },
     passwordHash: { type: String, required: true },
     role: { type: String, enum: ["master", "user"], default: "user" },
     modules: { type: UserModulesSchema, default: () => ({}) },

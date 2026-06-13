@@ -1,5 +1,5 @@
 import type { UserDocument } from "@/models/User";
-import type { UserDTO } from "./auth-types";
+import type { MasterDataScope, UserDTO } from "./auth-types";
 
 export function toUserDTO(doc: UserDocument): UserDTO {
   return {
@@ -18,6 +18,7 @@ export function toUserDTO(doc: UserDocument): UserDTO {
     notificationEmail: doc.notificationEmail ?? null,
     emailUpdatesEnabled: Boolean(doc.emailUpdatesEnabled),
     passwordChangeEnabled: Boolean(doc.passwordChangeEnabled),
+    masterDataScope: (doc.masterDataScope as MasterDataScope) ?? "platform",
     createdAt: doc.createdAt.toISOString(),
     lastLoginAt: doc.lastLoginAt?.toISOString() ?? null,
   };
@@ -38,5 +39,6 @@ export function toSessionUser(
     notificationEmail: dto.notificationEmail,
     emailUpdatesEnabled: isMaster ? true : dto.emailUpdatesEnabled,
     passwordChangeEnabled: isMaster ? true : dto.passwordChangeEnabled,
+    masterDataScope: isMaster ? dto.masterDataScope : "personal",
   };
 }

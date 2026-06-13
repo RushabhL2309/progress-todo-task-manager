@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import { requireAuth, requireMaster } from "@/lib/api-auth";
 import type { ChatGroupDTO } from "@/lib/auth-types";
 import { connectDB } from "@/lib/mongodb";
-import { hasModule } from "@/lib/permissions";
+import { hasModule, viewsAllPlatformData } from "@/lib/permissions";
 import { ChatGroup } from "@/models/ChatGroup";
 import { User } from "@/models/User";
 
@@ -15,10 +15,9 @@ export async function GET(request: Request) {
   }
 
   await connectDB();
-  const filter =
-    auth.user.role === "master"
-      ? {}
-      : { memberIds: auth.user.id };
+  const filter = viewsAllPlatformData(auth.user)
+    ? {}
+    : { memberIds: auth.user.id };
   const groups = await ChatGroup.find(filter).sort({ updatedAt: -1 });
 
   const allMemberIds = [...new Set(groups.flatMap((g) => g.memberIds.map((id) => id.toString())))];

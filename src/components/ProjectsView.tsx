@@ -21,9 +21,10 @@ type ProjectsTab = "projects" | "tasks";
 
 interface ProjectsViewProps {
   onWorkLogged?: () => void;
+  isMaster?: boolean;
 }
 
-export function ProjectsView({ onWorkLogged }: ProjectsViewProps) {
+export function ProjectsView({ onWorkLogged, isMaster = false }: ProjectsViewProps) {
   const [tab, setTab] = useState<ProjectsTab>("projects");
   const [layoutView, setLayoutView] = useState<ProjectLayoutView>("cards");
   const [projects, setProjects] = useState<ProjectDTO[]>([]);
@@ -203,6 +204,16 @@ export function ProjectsView({ onWorkLogged }: ProjectsViewProps) {
     await refreshDetail();
   }
 
+  async function handleDeleteProject() {
+    if (!selectedId) return;
+    const res = await apiFetch(`/api/projects/${selectedId}`, { method: "DELETE" });
+    if (!res.ok) return;
+    const list = await loadList();
+    setProjects(list);
+    setSelectedId(null);
+    setDetail(null);
+  }
+
   if (selectedId) {
     if (!detail || detail.project.id !== selectedId) {
       return (
@@ -215,7 +226,9 @@ export function ProjectsView({ onWorkLogged }: ProjectsViewProps) {
       <ProjectDetailView
         detail={detail}
         loading={false}
+        isMaster={isMaster}
         onBack={() => setSelectedId(null)}
+        onDelete={isMaster ? handleDeleteProject : undefined}
         onAddItem={handleAddItem}
         onCompleteWork={handleCompleteWork}
         onCloseProject={handleCloseProject}

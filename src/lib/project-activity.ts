@@ -90,11 +90,12 @@ export function mergeProjectTimeline(
 export function canAccessTaskChat(
   userId: string,
   role: string,
+  masterDataScope: string,
   item: {
     createdBy?: string | null;
     assignedUserId?: string | null;
   }
 ): boolean {
-  if (role === "master") return true;
+  if (role === "master" && masterDataScope !== "personal") return true;
   return userId === item.createdBy || userId === item.assignedUserId;
 }

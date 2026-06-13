@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
-import type { SessionUser, UserModules } from "./auth-types";
+import type { MasterDataScope, SessionUser, UserModules } from "./auth-types";
 
 export const SESSION_COOKIE = "pt_session";
 
@@ -39,6 +39,7 @@ export async function createSessionToken(
     notificationEmail: user.notificationEmail ?? "",
     emailUpdatesEnabled: user.emailUpdatesEnabled,
     passwordChangeEnabled: user.passwordChangeEnabled,
+    masterDataScope: user.masterDataScope,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(user.id)
@@ -61,6 +62,8 @@ export async function verifySessionToken(token: string): Promise<SessionUser | n
       notificationEmail: payload.notificationEmail ? String(payload.notificationEmail) : null,
       emailUpdatesEnabled: Boolean(payload.emailUpdatesEnabled),
       passwordChangeEnabled: Boolean(payload.passwordChangeEnabled),
+      masterDataScope:
+        payload.masterDataScope === "personal" ? "personal" : "platform",
     };
   } catch {
     return null;

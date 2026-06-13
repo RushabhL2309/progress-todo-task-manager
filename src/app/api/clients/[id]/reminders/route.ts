@@ -36,7 +36,7 @@ export async function GET(
 
   const client = await ClientProject.findOne({
     _id: id,
-    ...(auth.user.role === "master" ? {} : clientAccessFilter(auth.user)),
+    ...(clientAccessFilter(auth.user)),
   });
   if (!client) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -89,7 +89,7 @@ export async function POST(
     await connectDB();
     const client = await ClientProject.findOne({
       _id: id,
-      ...(auth.user.role === "master" ? {} : clientAccessFilter(auth.user)),
+      ...(clientAccessFilter(auth.user)),
     });
     if (!client) return NextResponse.json({ error: "Not found" }, { status: 404 });
 

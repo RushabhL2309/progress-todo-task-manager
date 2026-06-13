@@ -102,7 +102,7 @@ export async function GET(
 
     const task = await enrichTaskDto(item, project);
 
-    const canChat = canAccessTaskChat(auth.user.id, auth.user.role, {
+    const canChat = canAccessTaskChat(auth.user.id, auth.user.role, auth.user.masterDataScope, {
 
       createdBy: task.createdBy,
 
