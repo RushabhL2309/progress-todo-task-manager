@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api-client";
 import type { ClientProjectDTO, ClientStage, UserDTO } from "@/lib/auth-types";
 import { ClientDetailDrawer } from "./ClientDetailDrawer";
+import { DeleteIconButton } from "./DeleteIconButton";
 
 const STAGES: { id: ClientStage; label: string; color: string }[] = [
   { id: "enquiry", label: "Enquiry", color: "border-extra/30 bg-extra-light/50" },
@@ -37,20 +38,6 @@ function AssigneePicker({
         </label>
       ))}
     </div>
-  );
-}
-
-function DeleteIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path
-        d="M3 4.5H13M6 4.5V3.25C6 2.56 6.56 2 7.25 2H8.75C9.44 2 10 2.56 10 3.25V4.5M6.25 7V11.25M9.75 7V11.25M4.5 4.5L5 13.25C5 13.94 5.56 14.5 6.25 14.5H9.75C10.44 14.5 11 13.94 11 13.25L11.5 4.5"
-        stroke="currentColor"
-        strokeWidth="1.25"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
 
@@ -199,11 +186,18 @@ export function ClientUpdatesView() {
                 >
                   {items.map((c) => (
                     <li key={c.id}>
-                      <div className="flex items-start gap-2 rounded-lg border border-border bg-surface p-3 shadow-sm">
+                      <div className="relative rounded-lg border border-border bg-surface p-3 pr-10 shadow-sm">
+                        <DeleteIconButton
+                          label={`Delete ${c.name}`}
+                          disabled={deletingId === c.id}
+                          onClick={() => void handleDeleteClient(c)}
+                          size="sm"
+                          className="absolute right-1.5 top-1.5"
+                        />
                         <button
                           type="button"
                           onClick={() => setSelectedId(c.id)}
-                          className="min-w-0 flex-1 text-left transition-shadow hover:opacity-90"
+                          className="w-full text-left transition-shadow hover:opacity-90"
                         >
                           <p className="font-medium text-ink">{c.name}</p>
                           {c.notes && (
@@ -220,16 +214,6 @@ export function ClientUpdatesView() {
                             </p>
                           )}
                           <p className="mt-2 text-[10px] font-medium text-muted">Tap for details & reminders →</p>
-                        </button>
-                        <button
-                          type="button"
-                          disabled={deletingId === c.id}
-                          onClick={() => void handleDeleteClient(c)}
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-red-200 text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50 sm:h-8 sm:w-8"
-                          aria-label={`Delete ${c.name}`}
-                          title="Delete client"
-                        >
-                          <DeleteIcon />
                         </button>
                       </div>
                     </li>
