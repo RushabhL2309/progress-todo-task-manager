@@ -9,6 +9,8 @@ const ChatGroupSchema = new Schema(
   { timestamps: true }
 );
 
+ChatGroupSchema.index({ memberIds: 1 });
+
 export type ChatGroupDocument = InferSchemaType<typeof ChatGroupSchema> & {
   _id: mongoose.Types.ObjectId;
 };

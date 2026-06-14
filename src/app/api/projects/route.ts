@@ -6,29 +6,53 @@ import { demoProjectsStore } from "@/lib/demo-projects-store";
 import { connectDB } from "@/lib/mongodb";
 import type { SessionUser } from "@/lib/auth-types";
 import { projectAccessFilter } from "@/lib/permissions";
-import { toProjectDTO, toProjectItemDTO } from "@/lib/project-serializers";
+import { projectStatsFromItems, toProjectDTO } from "@/lib/project-serializers";
 import { Project } from "@/models/Project";
 import { ProjectItem } from "@/models/ProjectItem";
+import type { ProjectDTO, ProjectItemDTO, ProjectItemType } from "@/lib/types";
 
 async function listWithStats(user: SessionUser) {
   const access = projectAccessFilter(user);
-  const projects = await Project.find(access).sort({ updatedAt: -1 });
+  const projects = await Project.find(access).sort({ updatedAt: -1 }).lean();
   const ids = projects.map((p) => p._id);
-  const allItems = await ProjectItem.find({ projectId: { $in: ids } }).sort({
-    sortOrder: 1,
-    createdAt: 1,
-  });
-  const itemsByProject = new Map<string, ReturnType<typeof toProjectItemDTO>[]>();
+  const allItems = ids.length
+    ? await ProjectItem.find(
+        { projectId: { $in: ids } },
+        { projectId: 1, type: 1, status: 1, dueDate: 1 }
+      ).lean()
+    : [];
+  const itemsByProject = new Map<
+    string,
+    { type: ProjectItemType; status: ProjectItemDTO["status"]; dueDate: string | null }[]
+  >();
   for (const item of allItems) {
     if (!item.projectId) continue;
     const pid = item.projectId.toString();
     const list = itemsByProject.get(pid) ?? [];
-    list.push(toProjectItemDTO(item));
+    list.push({
+      type: item.type as ProjectItemDTO["type"],
+      status: item.status as ProjectItemDTO["status"],
+      dueDate: item.dueDate ?? null,
+    });
     itemsByProject.set(pid, list);
   }
-  return projects.map((p) =>
-    toProjectDTO(p, itemsByProject.get(p._id.toString()) ?? [])
-  );
+  return projects.map((p) => {
+    const stats = projectStatsFromItems(itemsByProject.get(p._id.toString()) ?? []);
+    return {
+      id: p._id.toString(),
+      name: p.name,
+      description: p.description ?? "",
+      status: p.status as ProjectDTO["status"],
+      color: p.color ?? "#5B7C6B",
+      createdAt: new Date(p.createdAt).toISOString(),
+      updatedAt: new Date(p.updatedAt).toISOString(),
+      deadline: p.deadline ?? null,
+      createdBy: p.createdBy?.toString() ?? "",
+      assignedUserIds: (p.assignedUserIds ?? []).map((id) => id.toString()),
+      linkedClientId: p.linkedClientId?.toString() ?? null,
+      ...stats,
+    } satisfies ProjectDTO;
+  });
 }
 
 export async function GET(request: Request) {

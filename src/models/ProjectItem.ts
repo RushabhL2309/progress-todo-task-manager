@@ -19,6 +19,7 @@ const ProjectItemSchema = new Schema(
 ProjectItemSchema.index({ projectId: 1, status: 1 });
 ProjectItemSchema.index({ assignedUserId: 1, status: 1 });
 ProjectItemSchema.index({ createdBy: 1 });
+ProjectItemSchema.index({ status: 1, dueDate: 1 });
 
 export type ProjectItemDocument = InferSchemaType<typeof ProjectItemSchema> & {
   _id: mongoose.Types.ObjectId;

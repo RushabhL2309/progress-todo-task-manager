@@ -12,6 +12,14 @@ import { Completion } from "@/models/Completion";
 import { ExtraTask } from "@/models/ExtraTask";
 import { ScheduledTask } from "@/models/ScheduledTask";
 
+function minDateKey(...keys: string[]) {
+  return keys.reduce((a, b) => (a < b ? a : b));
+}
+
+function maxDateKey(...keys: string[]) {
+  return keys.reduce((a, b) => (a > b ? a : b));
+}
+
 /** Single round-trip for main app data — faster initial load */
 export async function GET(request: Request) {
   try {
@@ -56,6 +64,8 @@ export async function GET(request: Request) {
     const columns = getColumnsForView(view, anchor);
     const from = columns[0]?.dateKey ?? anchorDate;
     const to = columns[columns.length - 1]?.dateKey ?? anchorDate;
+    const fetchFrom = minDateKey(from, selectedDate, todoDate);
+    const fetchTo = maxDateKey(to, selectedDate, todoDate);
 
     await connectDB();
     const taskFilter = personalTaskFilter(user);
@@ -66,30 +76,27 @@ export async function GET(request: Request) {
     });
     const taskIds = scheduledDocs.map((t) => t._id);
 
-    const [completionDocs, extraSelected, extraTodo, extraRange, extraAgg] =
-      await Promise.all([
-        Completion.find({
-          date: { $gte: from, $lte: to },
-          completed: true,
-          scheduledTaskId: { $in: taskIds },
-        }),
-        ExtraTask.find({ date: selectedDate, ...taskFilter }).sort({ createdAt: 1 }),
-        ExtraTask.find({ date: todoDate, ...taskFilter }).sort({ createdAt: 1 }),
-        ExtraTask.find({ date: { $gte: from, $lte: to }, ...taskFilter }).sort({
-          date: 1,
-          createdAt: 1,
-        }),
-        ExtraTask.aggregate<{ _id: string; total: number; completed: number }>([
-          { $match: { date: { $gte: from, $lte: to }, ...taskFilter } },
-          {
-            $group: {
-              _id: "$date",
-              total: { $sum: 1 },
-              completed: { $sum: { $cond: ["$completed", 1, 0] } },
-            },
+    const [completionDocs, extraDocs, extraAgg] = await Promise.all([
+      Completion.find({
+        date: { $gte: from, $lte: to },
+        completed: true,
+        scheduledTaskId: { $in: taskIds },
+      }),
+      ExtraTask.find({ date: { $gte: fetchFrom, $lte: fetchTo }, ...taskFilter }).sort({
+        date: 1,
+        createdAt: 1,
+      }),
+      ExtraTask.aggregate<{ _id: string; total: number; completed: number }>([
+        { $match: { date: { $gte: from, $lte: to }, ...taskFilter } },
+        {
+          $group: {
+            _id: "$date",
+            total: { $sum: 1 },
+            completed: { $sum: { $cond: ["$completed", 1, 0] } },
           },
-        ]),
-      ]);
+        },
+      ]),
+    ]);
 
     const scheduledTasks = scheduledDocs.map(toScheduledTaskDTO);
     const completions = completionsToMap(completionDocs);
@@ -98,6 +105,11 @@ export async function GET(request: Request) {
       total: row.total,
       completed: row.completed,
     }));
+
+    const extraDtos = extraDocs.map(toExtraTaskDTO);
+    const extrasRange = extraDtos.filter((e) => e.date >= from && e.date <= to);
+    const extrasSelected = extraDtos.filter((e) => e.date === selectedDate);
+    const extrasTodo = extraDtos.filter((e) => e.date === todoDate);
 
     const grid = {
       scheduledTasks,
@@ -111,16 +123,16 @@ export async function GET(request: Request) {
       anchor,
       scheduledTasks,
       completions,
-      extraRange.map(toExtraTaskDTO)
+      extrasRange
     );
 
     return NextResponse.json({
       scheduledTasks,
       grid,
       stats,
-      extrasSelected: extraSelected.map(toExtraTaskDTO),
-      extrasTodo: extraTodo.map(toExtraTaskDTO),
-      extrasRange: extraRange.map(toExtraTaskDTO),
+      extrasSelected,
+      extrasTodo,
+      extrasRange,
     });
   } catch (error) {
     console.error("GET /api/bootstrap", error);

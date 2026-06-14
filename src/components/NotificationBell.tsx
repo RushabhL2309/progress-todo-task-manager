@@ -1,63 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { AppNotification } from "@/lib/auth-types";
 import type { AppPage } from "./Sidebar";
 
 interface NotificationBellProps {
+  items: AppNotification[];
+  count: number;
   onNavigate: (page: AppPage) => void;
-  onToast: (message: string) => void;
 }
 
-export function NotificationBell({ onNavigate, onToast }: NotificationBellProps) {
+export function NotificationBell({ items, count, onNavigate }: NotificationBellProps) {
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<AppNotification[]>([]);
-  const [count, setCount] = useState(0);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 16 });
   const [mounted, setMounted] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
-  const seenRef = useRef<Set<string>>(new Set());
-  const initializedRef = useRef(false);
-
-  const load = useCallback(async () => {
-    try {
-      const res = await fetch("/api/notifications");
-      if (!res.ok) return;
-      const data = (await res.json()) as { notifications: AppNotification[]; count: number };
-      setItems(data.notifications);
-      setCount(data.count);
-
-      for (const n of data.notifications) {
-        if (!seenRef.current.has(n.id)) {
-          seenRef.current.add(n.id);
-          if (initializedRef.current) {
-            onToast(`${n.title} — ${n.body}`);
-          }
-        }
-      }
-      initializedRef.current = true;
-    } catch {
-      // Server offline or restarting — keep last known notifications
-    }
-  }, [onToast]);
 
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  useEffect(() => {
-    void load();
-    const interval = setInterval(() => {
-      if (document.visibilityState === "visible") void load();
-    }, 60000);
-    const onFocus = () => void load();
-    window.addEventListener("focus", onFocus);
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("focus", onFocus);
-    };
-  }, [load]);
 
   useEffect(() => {
     if (!open) return;

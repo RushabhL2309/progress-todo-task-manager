@@ -21,15 +21,22 @@ type ProjectsTab = "projects" | "tasks";
 
 interface ProjectsViewProps {
   onWorkLogged?: () => void;
-  isMaster?: boolean;
+  projects?: ProjectDTO[];
+  projectsLoading?: boolean;
+  onProjectsChange?: (projects: ProjectDTO[]) => void;
 }
 
-export function ProjectsView({ onWorkLogged, isMaster = false }: ProjectsViewProps) {
+export function ProjectsView({
+  onWorkLogged,
+  projects: sharedProjects,
+  projectsLoading: sharedProjectsLoading,
+  onProjectsChange,
+}: ProjectsViewProps) {
   const [tab, setTab] = useState<ProjectsTab>("projects");
   const [layoutView, setLayoutView] = useState<ProjectLayoutView>("cards");
-  const [projects, setProjects] = useState<ProjectDTO[]>([]);
+  const [projects, setProjects] = useState<ProjectDTO[]>(sharedProjects ?? []);
   const [detail, setDetail] = useState<ProjectDetailDTO | null>(null);
-  const [listLoading, setListLoading] = useState(true);
+  const [listLoading, setListLoading] = useState(sharedProjects === undefined);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [createMode, setCreateMode] = useState<CreateMode>("new");
@@ -42,6 +49,7 @@ export function ProjectsView({ onWorkLogged, isMaster = false }: ProjectsViewPro
   const [assignedUserIds, setAssignedUserIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     setLayoutView(getProjectLayoutView());
@@ -72,18 +80,26 @@ export function ProjectsView({ onWorkLogged, isMaster = false }: ProjectsViewPro
 
   const refreshDetail = useCallback(async () => {
     if (!selectedId) return;
-    const d = await loadDetail(selectedId);
+    const [d, list] = await Promise.all([loadDetail(selectedId), loadList()]);
     setDetail(d);
-    const list = await loadList();
     setProjects(list);
-  }, [selectedId, loadDetail, loadList]);
+    onProjectsChange?.(list);
+  }, [selectedId, loadDetail, loadList, onProjectsChange]);
 
   useEffect(() => {
+    if (sharedProjects !== undefined) {
+      setProjects(sharedProjects);
+      setListLoading(sharedProjectsLoading ?? false);
+      return;
+    }
     setListLoading(true);
     loadList()
-      .then(setProjects)
+      .then((list) => {
+        setProjects(list);
+        onProjectsChange?.(list);
+      })
       .finally(() => setListLoading(false));
-  }, [loadList]);
+  }, [sharedProjects, sharedProjectsLoading, loadList, onProjectsChange]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -153,7 +169,11 @@ export function ProjectsView({ onWorkLogged, isMaster = false }: ProjectsViewPro
       });
       if (!res.ok) return;
       const project = (await res.json()) as ProjectDTO;
-      setProjects((p) => [project, ...p]);
+      setProjects((p) => {
+        const next = [project, ...p];
+        onProjectsChange?.(next);
+        return next;
+      });
       resetProjectForm();
       setDrawerOpen(false);
       setSelectedId(project.id);
@@ -204,14 +224,27 @@ export function ProjectsView({ onWorkLogged, isMaster = false }: ProjectsViewPro
     await refreshDetail();
   }
 
-  async function handleDeleteProject() {
-    if (!selectedId) return;
-    const res = await apiFetch(`/api/projects/${selectedId}`, { method: "DELETE" });
-    if (!res.ok) return;
-    const list = await loadList();
-    setProjects(list);
-    setSelectedId(null);
-    setDetail(null);
+  async function handleDeleteProject(id?: string) {
+    const projectId = id ?? selectedId;
+    if (!projectId) return;
+    const project = projects.find((p) => p.id === projectId) ?? detail?.project;
+    const name = project?.name ?? "this project";
+    if (!confirm(`Delete project "${name}" and all its tasks? This cannot be undone.`)) return;
+
+    setDeletingId(projectId);
+    try {
+      const res = await apiFetch(`/api/projects/${projectId}`, { method: "DELETE" });
+      if (!res.ok) return;
+      const list = await loadList();
+      setProjects(list);
+      onProjectsChange?.(list);
+      if (selectedId === projectId) {
+        setSelectedId(null);
+        setDetail(null);
+      }
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   if (selectedId) {
@@ -226,9 +259,8 @@ export function ProjectsView({ onWorkLogged, isMaster = false }: ProjectsViewPro
       <ProjectDetailView
         detail={detail}
         loading={false}
-        isMaster={isMaster}
         onBack={() => setSelectedId(null)}
-        onDelete={isMaster ? handleDeleteProject : undefined}
+        onDelete={() => handleDeleteProject()}
         onAddItem={handleAddItem}
         onCompleteWork={handleCompleteWork}
         onCloseProject={handleCloseProject}
@@ -316,7 +348,13 @@ export function ProjectsView({ onWorkLogged, isMaster = false }: ProjectsViewPro
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {filtered.map((p) => (
-                <ProjectCard key={p.id} project={p} onClick={() => setSelectedId(p.id)} />
+                <ProjectCard
+                  key={p.id}
+                  project={p}
+                  deleting={deletingId === p.id}
+                  onClick={() => setSelectedId(p.id)}
+                  onDelete={() => handleDeleteProject(p.id)}
+                />
               ))}
             </div>
           )}

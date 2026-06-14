@@ -40,6 +40,7 @@ const ClientProjectSchema = new Schema(
 
 ClientProjectSchema.index({ stage: 1, createdBy: 1 });
 ClientProjectSchema.index({ assignedUserIds: 1 });
+ClientProjectSchema.index({ stage: 1, followUpDate: 1 });
 
 export type ClientProjectDocument = InferSchemaType<typeof ClientProjectSchema> & {
   _id: mongoose.Types.ObjectId;

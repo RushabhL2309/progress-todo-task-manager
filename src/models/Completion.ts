@@ -15,6 +15,7 @@ const CompletionSchema = new Schema(
 
 CompletionSchema.index({ scheduledTaskId: 1, date: 1 }, { unique: true });
 CompletionSchema.index({ date: 1 });
+CompletionSchema.index({ date: 1, scheduledTaskId: 1, completed: 1 });
 
 export type CompletionDocument = InferSchemaType<typeof CompletionSchema> & {
   _id: mongoose.Types.ObjectId;

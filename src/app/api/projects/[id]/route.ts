@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { requireMaster, requireModule } from "@/lib/api-auth";
+import { requireModule } from "@/lib/api-auth";
 import { isDemoMode } from "@/lib/demo-mode";
 import { demoProjectsStore } from "@/lib/demo-projects-store";
 import { connectDB } from "@/lib/mongodb";
@@ -120,7 +120,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireMaster(request);
+    const auth = await requireModule(request, "projects");
     if (auth.error) return auth.error;
 
     const { id } = await params;
@@ -133,7 +133,7 @@ export async function DELETE(
 
     await connectDB();
     const project = await Project.findById(id);
-    if (!project) {
+    if (!project || !canAccessProject(auth.user, project)) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 

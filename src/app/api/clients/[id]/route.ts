@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { requireMaster, requireModule } from "@/lib/api-auth";
+import { requireModule } from "@/lib/api-auth";
 import { toClientEventDTO, toClientProjectDTO, toClientReminderDTO } from "@/lib/client-serializers";
 import { connectDB } from "@/lib/mongodb";
 import { clientAccessFilter } from "@/lib/permissions";
@@ -173,14 +173,17 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireMaster(request);
+  const auth = await requireModule(request, "client_updates");
   if (auth.error) return auth.error;
 
   try {
     const { id } = await params;
     await connectDB();
 
-    const doc = await ClientProject.findById(id);
+    const doc = await ClientProject.findOne({
+      _id: id,
+      ...clientAccessFilter(auth.user),
+    });
     if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     if (doc.linkedProjectId) {

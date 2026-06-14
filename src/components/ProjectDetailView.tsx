@@ -16,7 +16,6 @@ type ProjectTab = "dashboard" | "issues" | "activity";
 interface ProjectDetailViewProps {
   detail: ProjectDetailDTO;
   loading: boolean;
-  isMaster?: boolean;
   onBack: () => void;
   onDelete?: () => Promise<void>;
   onAddItem: (data: {
@@ -38,7 +37,6 @@ interface ProjectDetailViewProps {
 export function ProjectDetailView({
   detail,
   loading,
-  isMaster = false,
   onBack,
   onDelete,
   onAddItem,
@@ -64,7 +62,6 @@ export function ProjectDetailView({
 
   async function handleDelete() {
     if (!onDelete) return;
-    if (!confirm(`Delete project "${project.name}" and all its tasks? This cannot be undone.`)) return;
     setDeleting(true);
     try {
       await onDelete();
@@ -137,7 +134,7 @@ export function ProjectDetailView({
                   Completed
                 </span>
               )}
-              {isMaster && onDelete && (
+              {onDelete && (
                 <button
                   type="button"
                   disabled={deleting}

@@ -9,7 +9,12 @@ export async function requireAuth(request: Request): Promise<
   | { user: SessionUser; error: null }
   | { user: null; error: NextResponse }
 > {
-  const user = (await getLiveSessionUser(request)) ?? getRequestUser(request) ?? (await getSessionUser(request));
+  const headerUser = getRequestUser(request);
+  if (headerUser) {
+    return { user: headerUser, error: null };
+  }
+
+  const user = (await getLiveSessionUser(request)) ?? (await getSessionUser(request));
   if (!user) {
     return {
       user: null,

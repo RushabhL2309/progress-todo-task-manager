@@ -31,6 +31,7 @@ import { SettingsView } from "./SettingsView";
 import { ViewModeTabs } from "./ViewModeTabs";
 import { NotificationBell } from "./NotificationBell";
 import { Toast } from "./Toast";
+import { useNotifications } from "@/hooks/useNotifications";
 
 import { hasModule } from "@/lib/user-access";
 
@@ -53,6 +54,7 @@ export function TrackerApp() {
   const [todoDayExtras, setTodoDayExtras] = useState<ExtraTaskDTO[]>([]);
   const [allExtras, setAllExtras] = useState<ExtraTaskDTO[]>([]);
   const [projects, setProjects] = useState<ProjectDTO[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -182,14 +184,61 @@ export function TrackerApp() {
 
   useEffect(() => {
     if (!user) return;
-    refreshData({ withLoading: !hasBootstrapRef.current });
+    const currentUser = user;
+
+    let cancelled = false;
+    async function loadInitial() {
+      const withLoading = !hasBootstrapRef.current;
+      if (withLoading) setLoading(true);
+      if (hasModule(currentUser, "projects") && projects.length === 0) setProjectsLoading(true);
+      setError(null);
+
+      try {
+        const tasks: Promise<void>[] = [];
+        if (hasModule(currentUser, "tracker")) {
+          tasks.push(
+            fetchBootstrap().then((data) => {
+              if (!cancelled) applyBootstrap(data);
+            })
+          );
+        }
+        if (hasModule(currentUser, "projects")) {
+          tasks.push(
+            apiFetch("/api/projects")
+              .then((res) => (res.ok ? res.json() : []))
+              .then((data: ProjectDTO[]) => {
+                if (!cancelled) setProjects(data);
+              })
+          );
+        }
+        await Promise.all(tasks);
+        if (!cancelled) hasBootstrapRef.current = true;
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Something went wrong");
+        }
+      } finally {
+        if (!cancelled) {
+          if (withLoading) setLoading(false);
+          setProjectsLoading(false);
+        }
+      }
+    }
+
+    void loadInitial();
+    return () => {
+      cancelled = true;
+    };
     // Only run when the signed-in user changes — not on every date/view refresh.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   useEffect(() => {
     if (!user || !hasBootstrapRef.current) return;
-    refreshData();
+    const timer = setTimeout(() => {
+      void refreshData();
+    }, 200);
+    return () => clearTimeout(timer);
   }, [view, anchorDate, selectedDate, todoDate, refreshData, user]);
 
   useEffect(() => {
@@ -249,13 +298,12 @@ export function TrackerApp() {
       const res = await apiFetch("/api/completions", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ taskId, date: dateKey, completed }),
+        body: JSON.stringify({ taskId, dateKey, completed }),
       });
       if (!res.ok) throw new Error("Failed");
-      await refreshData();
     } catch {
       setGrid(prevGrid);
-      await refreshData();
+      if (prevGrid) recomputeStats(prevCompletions, allExtras);
     }
   }
 
@@ -272,12 +320,17 @@ export function TrackerApp() {
   async function handleToggleExtra(id: string, completed: boolean) {
     const prevExtras = extraTasks;
     const prevAll = allExtras;
+    const prevTodo = todoDayExtras;
     const updated = (list: ExtraTaskDTO[]) =>
       list.map((t) => (t.id === id ? { ...t, completed } : t));
 
-    setExtraTasks(updated(extraTasks));
-    setAllExtras(updated(allExtras));
-    if (grid) recomputeStats(grid.completions, updated(allExtras));
+    const nextExtras = updated(extraTasks);
+    const nextAll = updated(allExtras);
+    const nextTodo = updated(todoDayExtras);
+    setExtraTasks(nextExtras);
+    setAllExtras(nextAll);
+    setTodoDayExtras(nextTodo);
+    if (grid) recomputeStats(grid.completions, nextAll);
 
     try {
       const res = await apiFetch(`/api/tasks/extra/${id}`, {
@@ -286,11 +339,11 @@ export function TrackerApp() {
         body: JSON.stringify({ completed }),
       });
       if (!res.ok) throw new Error("Failed");
-      await refreshData();
     } catch {
       setExtraTasks(prevExtras);
       setAllExtras(prevAll);
-      await refreshData();
+      setTodoDayExtras(prevTodo);
+      if (grid) recomputeStats(grid.completions, prevAll);
     }
   }
 
@@ -342,14 +395,18 @@ export function TrackerApp() {
 
   const periodLabel = formatPeriodLabel(view, parseDateKey(anchorDate));
 
-  useEffect(() => {
-    if (!user || !hasModule(user, "projects")) return;
-    apiFetch("/api/projects")
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data: ProjectDTO[]) => setProjects(data))
-      .catch(() => setProjects([]));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  const handleNotificationNavigate = useCallback(
+    (target: AppPage) => {
+      if (user && canAccessPage(user, target)) setPage(target);
+    },
+    [user]
+  );
+
+  const showToast = useCallback((message: string) => {
+    setToastMessage(message);
+  }, []);
+
+  const notifications = useNotifications(showToast);
 
   const pageTitle = pageLabel(page);
 
@@ -368,17 +425,6 @@ export function TrackerApp() {
     router.push("/login");
     router.refresh();
   }
-
-  const handleNotificationNavigate = useCallback(
-    (target: AppPage) => {
-      if (user && canAccessPage(user, target)) setPage(target);
-    },
-    [user]
-  );
-
-  const showToast = useCallback((message: string) => {
-    setToastMessage(message);
-  }, []);
 
   if (authLoading || !user) {
     return (
@@ -400,7 +446,11 @@ export function TrackerApp() {
         title={pageTitle}
         mobileTrailing={
           <>
-            <NotificationBell onNavigate={handleNotificationNavigate} onToast={showToast} />
+            <NotificationBell
+              items={notifications.items}
+              count={notifications.count}
+              onNavigate={handleNotificationNavigate}
+            />
             <button
               type="button"
               onClick={handleLogout}
@@ -419,7 +469,11 @@ export function TrackerApp() {
           <div className="flex min-h-[52px] items-center gap-3 rounded-2xl border border-border bg-surface/95 px-4 py-2.5 shadow-[0_8px_32px_rgba(26,26,26,0.08)] backdrop-blur-md">
             <h1 className="min-w-0 flex-1 truncate text-base font-semibold text-ink">{pageTitle}</h1>
             <div className="flex shrink-0 items-center gap-2">
-              <NotificationBell onNavigate={handleNotificationNavigate} onToast={showToast} />
+              <NotificationBell
+              items={notifications.items}
+              count={notifications.count}
+              onNavigate={handleNotificationNavigate}
+            />
               <button
                 type="button"
                 onClick={handleLogout}
@@ -505,7 +559,12 @@ export function TrackerApp() {
           )}
 
           {page === "projects" && (
-            <ProjectsView onWorkLogged={refreshQuiet} isMaster={user.role === "master"} />
+            <ProjectsView
+              projects={projects}
+              projectsLoading={projectsLoading}
+              onProjectsChange={setProjects}
+              onWorkLogged={refreshQuiet}
+            />
           )}
 
           {page === "todo" && (
@@ -542,7 +601,7 @@ export function TrackerApp() {
             />
           )}
 
-          {page === "clients" && <ClientUpdatesView isMaster={user.role === "master"} />}
+          {page === "clients" && <ClientUpdatesView />}
 
           {page === "chat" && <ChatView />}
 

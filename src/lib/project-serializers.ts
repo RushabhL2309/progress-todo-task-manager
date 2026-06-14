@@ -4,6 +4,14 @@ import type { ProjectUpdateDocument } from "@/models/ProjectUpdate";
 import { computeProjectProgress } from "./project-stats";
 import type { ProjectDTO, ProjectItemDTO, ProjectUpdateDTO } from "./types";
 
+type ProjectItemStatsFields = Pick<ProjectItemDTO, "type" | "status" | "dueDate">;
+
+export function projectStatsFromItems(
+  items: ProjectItemStatsFields[]
+): ReturnType<typeof computeProjectProgress> {
+  return computeProjectProgress(items as ProjectItemDTO[]);
+}
+
 export function toProjectDTO(
   doc: ProjectDocument,
   items: ProjectItemDTO[] = []

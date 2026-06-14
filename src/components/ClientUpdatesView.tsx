@@ -40,7 +40,21 @@ function AssigneePicker({
   );
 }
 
-export function ClientUpdatesView({ isMaster = false }: { isMaster?: boolean }) {
+function DeleteIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path
+        d="M3 4.5H13M6 4.5V3.25C6 2.56 6.56 2 7.25 2H8.75C9.44 2 10 2.56 10 3.25V4.5M6.25 7V11.25M9.75 7V11.25M4.5 4.5L5 13.25C5 13.94 5.56 14.5 6.25 14.5H9.75C10.44 14.5 11 13.94 11 13.25L11.5 4.5"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function ClientUpdatesView() {
   const [clients, setClients] = useState<ClientProjectDTO[]>([]);
   const [assignable, setAssignable] = useState<UserDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +63,7 @@ export function ClientUpdatesView({ isMaster = false }: { isMaster?: boolean }) 
   const [newAssignees, setNewAssignees] = useState<string[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [collapsedStages, setCollapsedStages] = useState<Set<ClientStage>>(new Set());
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   function toggleStageCollapse(stageId: ClientStage) {
     setCollapsedStages((prev) => {
@@ -88,6 +103,20 @@ export function ClientUpdatesView({ isMaster = false }: { isMaster?: boolean }) 
     setNewName("");
     setNewAssignees([]);
     await load();
+  }
+
+  async function handleDeleteClient(client: ClientProjectDTO) {
+    if (!confirm(`Delete daily client "${client.name}"? This cannot be undone.`)) return;
+    setDeletingId(client.id);
+    try {
+      const res = await apiFetch(`/api/clients/${client.id}`, { method: "DELETE" });
+      if (res.ok) {
+        if (selectedId === client.id) setSelectedId(null);
+        await load();
+      }
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   return (
@@ -170,27 +199,39 @@ export function ClientUpdatesView({ isMaster = false }: { isMaster?: boolean }) 
                 >
                   {items.map((c) => (
                     <li key={c.id}>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedId(c.id)}
-                        className="w-full rounded-lg border border-border bg-surface p-3 text-left shadow-sm transition-shadow hover:shadow-md"
-                      >
-                        <p className="font-medium text-ink">{c.name}</p>
-                        {c.notes && (
-                          <p className="mt-1 line-clamp-2 text-xs text-muted">{c.notes}</p>
-                        )}
-                        {c.followUpDate && (stage.id === "enquiry" || stage.id === "running") && (
-                          <p className="mt-1 text-[10px] text-accent">Follow-up: {c.followUpDate}</p>
-                        )}
-                        {c.assignedUserIds.length > 0 && (
-                          <p className="mt-1 text-[10px] text-muted">
-                            {c.assignedUserIds
-                              .map((id) => assignable.find((u) => u.id === id)?.name ?? "User")
-                              .join(", ")}
-                          </p>
-                        )}
-                        <p className="mt-2 text-[10px] font-medium text-muted">Tap for details & reminders →</p>
-                      </button>
+                      <div className="flex items-start gap-2 rounded-lg border border-border bg-surface p-3 shadow-sm">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(c.id)}
+                          className="min-w-0 flex-1 text-left transition-shadow hover:opacity-90"
+                        >
+                          <p className="font-medium text-ink">{c.name}</p>
+                          {c.notes && (
+                            <p className="mt-1 line-clamp-2 text-xs text-muted">{c.notes}</p>
+                          )}
+                          {c.followUpDate && (stage.id === "enquiry" || stage.id === "running") && (
+                            <p className="mt-1 text-[10px] text-accent">Follow-up: {c.followUpDate}</p>
+                          )}
+                          {c.assignedUserIds.length > 0 && (
+                            <p className="mt-1 text-[10px] text-muted">
+                              {c.assignedUserIds
+                                .map((id) => assignable.find((u) => u.id === id)?.name ?? "User")
+                                .join(", ")}
+                            </p>
+                          )}
+                          <p className="mt-2 text-[10px] font-medium text-muted">Tap for details & reminders →</p>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={deletingId === c.id}
+                          onClick={() => void handleDeleteClient(c)}
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-red-200 text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50 sm:h-8 sm:w-8"
+                          aria-label={`Delete ${c.name}`}
+                          title="Delete client"
+                        >
+                          <DeleteIcon />
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -203,7 +244,6 @@ export function ClientUpdatesView({ isMaster = false }: { isMaster?: boolean }) 
       <ClientDetailDrawer
         clientId={selectedId}
         assignable={assignable}
-        isMaster={isMaster}
         onClose={() => setSelectedId(null)}
         onUpdated={load}
       />
