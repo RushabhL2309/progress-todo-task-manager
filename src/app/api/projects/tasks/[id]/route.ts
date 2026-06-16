@@ -38,7 +38,7 @@ async function enrichTaskDto(
 
   if (dto.projectId && project) projectName = project.name;
 
-  const userIds = [dto.assignedUserId, dto.createdBy].filter(Boolean) as string[];
+  const userIds = [...(dto.assignedUserIds ?? []), dto.assignedUserId, dto.createdBy].filter(Boolean) as string[];
 
   if (userIds.length > 0) {
 
@@ -46,7 +46,8 @@ async function enrichTaskDto(
 
     const map = Object.fromEntries(users.map((u) => [u._id.toString(), u.name]));
 
-    assignedUserName = dto.assignedUserId ? map[dto.assignedUserId] ?? null : null;
+    const assignedIds = dto.assignedUserIds ?? (dto.assignedUserId ? [dto.assignedUserId] : []);
+    assignedUserName = assignedIds.length > 0 ? assignedIds.map((id) => map[id] ?? "User").join(", ") : null;
 
     createdByName = dto.createdBy ? map[dto.createdBy] ?? null : null;
 
@@ -309,6 +310,7 @@ export async function PATCH(
       }
 
       item.assignedUserId = assignee ? new mongoose.Types.ObjectId(assignee) : null;
+      item.assignedUserIds = assignee ? [new mongoose.Types.ObjectId(assignee)] : [];
 
       if (assignee !== prevAssignee && item.projectId) {
 

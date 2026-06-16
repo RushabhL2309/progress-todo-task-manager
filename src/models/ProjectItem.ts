@@ -10,6 +10,7 @@ const ProjectItemSchema = new Schema(
     dueDate: { type: String, default: null },
     sortOrder: { type: Number, default: 0 },
     assignedUserId: { type: Schema.Types.ObjectId, ref: "User", default: null },
+    assignedUserIds: [{ type: Schema.Types.ObjectId, ref: "User" }],
     createdBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
     completionNote: { type: String, default: "" },
   },

@@ -128,6 +128,14 @@ export function ProjectsView({
   }, [drawerOpen]);
 
   useEffect(() => {
+    if (!selectedId || assignableUsers.length > 0) return;
+    apiFetch("/api/admin/users/assignable")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((users: UserDTO[]) => setAssignableUsers(users))
+      .catch(() => {});
+  }, [selectedId, assignableUsers.length]);
+
+  useEffect(() => {
     if (createMode !== "from_client" || !selectedClientId) return;
     const client = linkableClients.find((c) => c.id === selectedClientId);
     if (client) {
@@ -187,6 +195,7 @@ export function ProjectsView({
     description?: string;
     type: ProjectItemType;
     dueDate: string | null;
+    assignedUserIds?: string[];
   }) {
     if (!selectedId) return;
     await apiFetch(`/api/projects/${selectedId}/items`, {
@@ -220,6 +229,16 @@ export function ProjectsView({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ paymentReceived }),
+    });
+    await refreshDetail();
+  }
+
+  async function handleUpdateMembers(assignedUserIds: string[]) {
+    if (!selectedId) return;
+    await apiFetch(`/api/projects/${selectedId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assignedUserIds }),
     });
     await refreshDetail();
   }
@@ -261,6 +280,8 @@ export function ProjectsView({
         loading={false}
         onBack={() => setSelectedId(null)}
         onDelete={() => handleDeleteProject()}
+        assignableUsers={assignableUsers}
+        onUpdateMembers={handleUpdateMembers}
         onAddItem={handleAddItem}
         onCompleteWork={handleCompleteWork}
         onCloseProject={handleCloseProject}

@@ -29,6 +29,7 @@ export function ProjectTasksView({ projects, onOpenProject }: ProjectTasksViewPr
   const [dueDate, setDueDate] = useState("");
   const [projectId, setProjectId] = useState("");
   const [assignedUserId, setAssignedUserId] = useState("");
+  const [assignedUserIds, setAssignedUserIds] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     const [tRes, uRes] = await Promise.all([
@@ -61,6 +62,10 @@ export function ProjectTasksView({ projects, onOpenProject }: ProjectTasksViewPr
     }
   }, [assigneeOptions, assignedUserId]);
 
+  useEffect(() => {
+    setAssignedUserIds((ids) => ids.filter((id) => assigneeOptions.some((u) => u.id === id)));
+  }, [assigneeOptions]);
+
   function resetForm() {
     setTitle("");
     setDescription("");
@@ -68,6 +73,7 @@ export function ProjectTasksView({ projects, onOpenProject }: ProjectTasksViewPr
     setDueDate("");
     setProjectId("");
     setAssignedUserId("");
+    setAssignedUserIds([]);
   }
 
   async function handleAdd(e: FormEvent) {
@@ -85,6 +91,7 @@ export function ProjectTasksView({ projects, onOpenProject }: ProjectTasksViewPr
           dueDate: dueDate || null,
           projectId: projectId || null,
           assignedUserId: assignedUserId || null,
+          assignedUserIds,
         }),
       });
       if (res.ok) {
@@ -330,7 +337,7 @@ export function ProjectTasksView({ projects, onOpenProject }: ProjectTasksViewPr
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-muted">Assign to</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted">Assign to (single)</label>
             <select
               value={assignedUserId}
               onChange={(e) => setAssignedUserId(e.target.value)}
@@ -347,6 +354,30 @@ export function ProjectTasksView({ projects, onOpenProject }: ProjectTasksViewPr
               <p className="mt-1 text-xs text-muted">Assign users on the project first.</p>
             )}
           </div>
+          {assigneeOptions.length > 0 && (
+            <div>
+              <p className="mb-2 text-xs font-medium text-muted">Assign users (multiple)</p>
+              <div className="flex flex-wrap gap-2">
+                {assigneeOptions.map((u) => (
+                  <label
+                    key={u.id}
+                    className="flex items-center gap-1.5 rounded-lg border border-border bg-canvas px-2 py-1 text-xs"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={assignedUserIds.includes(u.id)}
+                      onChange={(e) =>
+                        setAssignedUserIds((ids) =>
+                          e.target.checked ? [...ids, u.id] : ids.filter((id) => id !== u.id)
+                        )
+                      }
+                    />
+                    {u.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-1.5 block text-xs font-medium text-muted">Type</label>

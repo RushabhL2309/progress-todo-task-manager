@@ -57,6 +57,8 @@ export function projectDTOFromStats(
 }
 
 export function toProjectItemDTO(doc: ProjectItemDocument): ProjectItemDTO {
+  const assignedUserIds = (doc.assignedUserIds ?? []).map((id) => id.toString());
+  const assignedUserId = doc.assignedUserId?.toString() ?? assignedUserIds[0] ?? null;
   return {
     id: doc._id.toString(),
     projectId: doc.projectId?.toString() ?? null,
@@ -67,7 +69,8 @@ export function toProjectItemDTO(doc: ProjectItemDocument): ProjectItemDTO {
     dueDate: doc.dueDate ?? null,
     sortOrder: doc.sortOrder,
     createdAt: doc.createdAt.toISOString(),
-    assignedUserId: doc.assignedUserId?.toString() ?? null,
+    assignedUserId,
+    assignedUserIds,
     createdBy: doc.createdBy?.toString() ?? null,
     completionNote: doc.completionNote ?? "",
   };

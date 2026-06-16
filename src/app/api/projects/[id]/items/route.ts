@@ -33,6 +33,11 @@ export async function POST(
       typeof body.assignedUserId === "string" && body.assignedUserId
         ? body.assignedUserId
         : null;
+    const assignedUserIds = Array.isArray(body.assignedUserIds)
+      ? body.assignedUserIds.filter((x: unknown): x is string => typeof x === "string" && Boolean(x))
+      : assignedUserId
+        ? [assignedUserId]
+        : [];
 
     if (!title) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
@@ -49,7 +54,7 @@ export async function POST(
     if (!project || !canAccessProject(auth.user, project)) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
-    if (assignedUserId && !canAssignUserToProject(project, assignedUserId)) {
+    if (assignedUserIds.some((uid: string) => !canAssignUserToProject(project, uid))) {
       return NextResponse.json(
         { error: "Assignee must be a user on this project" },
         { status: 400 }
@@ -64,22 +69,24 @@ export async function POST(
       type,
       dueDate,
       sortOrder: count,
-      assignedUserId: assignedUserId
-        ? new mongoose.Types.ObjectId(assignedUserId)
+      assignedUserId: assignedUserIds[0]
+        ? new mongoose.Types.ObjectId(assignedUserIds[0])
         : null,
+      assignedUserIds: assignedUserIds.map((uid: string) => new mongoose.Types.ObjectId(uid)),
       createdBy: auth.user.id,
     });
 
-    const assigneeUser = assignedUserId ? await User.findById(assignedUserId) : null;
+    const assigneeUsers = assignedUserIds.length > 0 ? await User.find({ _id: { $in: assignedUserIds } }) : [];
+    const assigneeNames = assigneeUsers.map((u) => u.name).join(", ");
     await logProjectActivity({
       projectId,
       userId: auth.user.id,
       action: "task_created",
-      description: assigneeUser
-        ? `${type} created: ${title} → ${assigneeUser.name}`
+      description: assigneeNames
+        ? `${type} created: ${title} → ${assigneeNames}`
         : `${type} created: ${title}`,
       itemId: item._id,
-      metadata: { taskTitle: title, type, assigneeName: assigneeUser?.name ?? null },
+      metadata: { taskTitle: title, type, assigneeNames: assigneeNames || null },
     });
 
     return NextResponse.json(toProjectItemDTO(item), { status: 201 });

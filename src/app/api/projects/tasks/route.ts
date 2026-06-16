@@ -19,15 +19,17 @@ export async function GET(request: Request) {
   const nameMap = Object.fromEntries(projects.map((p) => [p._id.toString(), p.name]));
 
   const items = await ProjectItem.find(taskListFilter(auth.user, projectIds)).sort({
-    status: 1,
-    dueDate: 1,
     createdAt: -1,
   });
 
   const userIds = [
     ...new Set(
       items
-        .flatMap((i) => [i.assignedUserId?.toString(), i.createdBy?.toString()])
+        .flatMap((i) => [
+          i.assignedUserId?.toString(),
+          ...(i.assignedUserIds ?? []).map((id) => id.toString()),
+          i.createdBy?.toString(),
+        ])
         .filter((x): x is string => Boolean(x))
     ),
   ];
@@ -39,9 +41,11 @@ export async function GET(request: Request) {
     return {
       ...base,
       projectName: base.projectId ? nameMap[base.projectId] ?? "Project" : null,
-      assignedUserName: base.assignedUserId
-        ? userNameMap[base.assignedUserId] ?? "User"
-        : null,
+      assignedUserName: ((base.assignedUserIds ?? []).length > 0
+        ? (base.assignedUserIds ?? []).map((id) => userNameMap[id] ?? "User").join(", ")
+        : base.assignedUserId
+          ? userNameMap[base.assignedUserId] ?? "User"
+          : null),
       createdByName: base.createdBy ? userNameMap[base.createdBy] ?? "User" : null,
     };
   });
@@ -67,6 +71,11 @@ export async function POST(request: Request) {
       typeof body.assignedUserId === "string" && body.assignedUserId
         ? body.assignedUserId
         : null;
+    const assignedUserIds = Array.isArray(body.assignedUserIds)
+      ? body.assignedUserIds.filter((x: unknown): x is string => typeof x === "string" && Boolean(x))
+      : assignedUserId
+        ? [assignedUserId]
+        : [];
 
     if (!title) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
@@ -81,7 +90,7 @@ export async function POST(request: Request) {
       if (!project) {
         return NextResponse.json({ error: "Project not found" }, { status: 404 });
       }
-      if (assignedUserId && !canAssignUserToProject(project, assignedUserId)) {
+      if (assignedUserIds.some((uid: string) => !canAssignUserToProject(project, uid))) {
         return NextResponse.json(
           { error: "Assignee must be a user on this project" },
           { status: 400 }
@@ -101,23 +110,25 @@ export async function POST(request: Request) {
       type,
       dueDate,
       sortOrder: count,
-      assignedUserId: assignedUserId
-        ? new mongoose.Types.ObjectId(assignedUserId)
+      assignedUserId: assignedUserIds[0]
+        ? new mongoose.Types.ObjectId(assignedUserIds[0])
         : null,
+      assignedUserIds: assignedUserIds.map((uid: string) => new mongoose.Types.ObjectId(uid)),
       createdBy: auth.user.id,
     });
 
     if (projectOid) {
-      const assigneeUser = assignedUserId ? await User.findById(assignedUserId) : null;
+      const assigneeUsers = assignedUserIds.length > 0 ? await User.find({ _id: { $in: assignedUserIds } }) : [];
+      const assigneeNames = assigneeUsers.map((u) => u.name).join(", ");
       await logProjectActivity({
         projectId: projectOid,
         userId: auth.user.id,
         action: "task_created",
-        description: assigneeUser
-          ? `Task created: ${title} → ${assigneeUser.name}`
+        description: assigneeNames
+          ? `Task created: ${title} → ${assigneeNames}`
           : `Task created: ${title}`,
         itemId: item._id,
-        metadata: { taskTitle: title, type, assigneeName: assigneeUser?.name ?? null },
+        metadata: { taskTitle: title, type, assigneeNames: assigneeNames || null },
       });
     }
 
@@ -128,9 +139,10 @@ export async function POST(request: Request) {
       const projects = await getAccessibleProjects(auth.user);
       projectName = projects.find((p) => p._id.toString() === dto.projectId)?.name ?? null;
     }
-    if (dto.assignedUserId) {
-      const u = await User.findById(dto.assignedUserId);
-      assignedUserName = u?.name ?? null;
+    const assignedIds = dto.assignedUserIds ?? (dto.assignedUserId ? [dto.assignedUserId] : []);
+    if (assignedIds.length > 0) {
+      const users = await User.find({ _id: { $in: assignedIds } });
+      assignedUserName = users.map((u) => u.name).join(", ") || null;
     }
 
     return NextResponse.json(

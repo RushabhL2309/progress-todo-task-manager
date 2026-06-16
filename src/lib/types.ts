@@ -71,6 +71,7 @@ export interface ProjectItemDTO {
   sortOrder: number;
   createdAt: string;
   assignedUserId: string | null;
+  assignedUserIds?: string[];
   createdBy: string | null;
   completionNote: string;
 }

@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { format, parseISO } from "date-fns";
 import type { ProjectDetailDTO, ProjectItemDTO, ProjectItemType } from "@/lib/types";
+import type { UserDTO } from "@/lib/auth-types";
 
 type FilterType = "all" | ProjectItemType;
 
@@ -14,9 +15,11 @@ interface ProjectIssuesTabProps {
     description?: string;
     type: ProjectItemType;
     dueDate: string | null;
+    assignedUserIds?: string[];
   }) => Promise<void>;
   onCompleteItem: (itemId: string) => void;
   onLogWork: () => void;
+  assigneeOptions?: UserDTO[];
 }
 
 export function ProjectIssuesTab({
@@ -25,6 +28,7 @@ export function ProjectIssuesTab({
   onAddItem,
   onCompleteItem,
   onLogWork,
+  assigneeOptions = [],
 }: ProjectIssuesTabProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -32,9 +36,14 @@ export function ProjectIssuesTab({
   const [dueDate, setDueDate] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
   const [submitting, setSubmitting] = useState(false);
+  const [assignedUserIds, setAssignedUserIds] = useState<string[]>([]);
 
-  const openItems = detail.items.filter((i) => i.status === "open");
-  const resolvedItems = detail.items.filter((i) => i.status === "resolved");
+  const openItems = detail.items
+    .filter((i) => i.status === "open")
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const resolvedItems = detail.items
+    .filter((i) => i.status === "resolved")
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const filteredOpen =
     filter === "all" ? openItems : openItems.filter((i) => i.type === filter);
 
@@ -48,10 +57,12 @@ export function ProjectIssuesTab({
         description: description.trim() || undefined,
         type,
         dueDate: dueDate || null,
+        assignedUserIds,
       });
       setTitle("");
       setDescription("");
       setDueDate("");
+      setAssignedUserIds([]);
     } finally {
       setSubmitting(false);
     }
@@ -112,6 +123,30 @@ export function ProjectIssuesTab({
               Add
             </button>
           </div>
+          {assigneeOptions.length > 0 && (
+            <div>
+              <p className="mb-2 text-xs font-medium text-muted">Assign users (multiple)</p>
+              <div className="flex flex-wrap gap-2">
+                {assigneeOptions.map((u) => (
+                  <label
+                    key={u.id}
+                    className="flex items-center gap-1.5 rounded-lg border border-border bg-canvas px-2 py-1 text-xs"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={assignedUserIds.includes(u.id)}
+                      onChange={(e) =>
+                        setAssignedUserIds((ids) =>
+                          e.target.checked ? [...ids, u.id] : ids.filter((id) => id !== u.id)
+                        )
+                      }
+                    />
+                    {u.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
         </form>
       </div>
 
@@ -144,7 +179,14 @@ export function ProjectIssuesTab({
         ) : (
           <ul className="mt-3 space-y-2">
             {filteredOpen.map((item) => (
-              <IssueRow key={item.id} item={item} onComplete={() => onCompleteItem(item.id)} />
+              <IssueRow
+                key={item.id}
+                item={item}
+                assigneeNames={assigneeOptions
+                  .filter((u) => (item.assignedUserIds ?? []).includes(u.id))
+                  .map((u) => u.name)}
+                onComplete={() => onCompleteItem(item.id)}
+              />
             ))}
           </ul>
         )}
@@ -169,7 +211,15 @@ export function ProjectIssuesTab({
   );
 }
 
-function IssueRow({ item, onComplete }: { item: ProjectItemDTO; onComplete: () => void }) {
+function IssueRow({
+  item,
+  assigneeNames,
+  onComplete,
+}: {
+  item: ProjectItemDTO;
+  assigneeNames: string[];
+  onComplete: () => void;
+}) {
   const isOverdue =
     item.dueDate && item.dueDate < new Date().toISOString().slice(0, 10);
 
@@ -193,6 +243,9 @@ function IssueRow({ item, onComplete }: { item: ProjectItemDTO; onComplete: () =
         <p className="mt-1 text-sm font-medium text-ink">{item.title}</p>
         {item.description && (
           <p className="mt-1 text-xs text-muted">{item.description}</p>
+        )}
+        {assigneeNames.length > 0 && (
+          <p className="mt-1 text-[10px] text-muted">Assigned: {assigneeNames.join(", ")}</p>
         )}
         {item.description === "Today's goal from extra work" && (
           <p className="mt-1 text-[10px] font-medium text-extra">From daily extra work</p>

@@ -1,7 +1,8 @@
 "use client";
 
 import { format, parseISO } from "date-fns";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { UserDTO } from "@/lib/auth-types";
 import type { ProjectDetailDTO } from "@/lib/types";
 import { ProjectActivityTab } from "./ProjectActivityTab";
 import { ProjectCompleteModal } from "./ProjectCompleteModal";
@@ -18,11 +19,14 @@ interface ProjectDetailViewProps {
   loading: boolean;
   onBack: () => void;
   onDelete?: () => Promise<void>;
+  assignableUsers?: UserDTO[];
+  onUpdateMembers?: (assignedUserIds: string[]) => Promise<void>;
   onAddItem: (data: {
     title: string;
     description?: string;
     type: ProjectItemType;
     dueDate: string | null;
+    assignedUserIds?: string[];
   }) => Promise<void>;
   onCompleteWork: (data: {
     description: string;
@@ -39,6 +43,8 @@ export function ProjectDetailView({
   loading,
   onBack,
   onDelete,
+  assignableUsers = [],
+  onUpdateMembers,
   onAddItem,
   onCompleteWork,
   onCloseProject,
@@ -48,6 +54,13 @@ export function ProjectDetailView({
   const [closeOpen, setCloseOpen] = useState(false);
   const [completeItemId, setCompleteItemId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [memberEditorOpen, setMemberEditorOpen] = useState(false);
+  const [memberIds, setMemberIds] = useState<string[]>(detail.project.assignedUserIds);
+  const [savingMembers, setSavingMembers] = useState(false);
+
+  useEffect(() => {
+    setMemberIds(detail.project.assignedUserIds);
+  }, [detail.project.assignedUserIds]);
 
   const openItems = detail.items.filter((i) => i.status === "open");
   const { project } = detail;
@@ -67,6 +80,17 @@ export function ProjectDetailView({
       await onDelete();
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function handleSaveMembers() {
+    if (!onUpdateMembers) return;
+    setSavingMembers(true);
+    try {
+      await onUpdateMembers(memberIds);
+      setMemberEditorOpen(false);
+    } finally {
+      setSavingMembers(false);
     }
   }
 
@@ -149,6 +173,59 @@ export function ProjectDetailView({
 
           <div className="border-t border-border px-4 pb-4 sm:px-5">
             <ProjectProgressSummary project={project} />
+            {onUpdateMembers && (
+              <div className="mt-4 rounded-lg border border-border bg-canvas/40 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs font-medium text-muted">
+                    Members:{" "}
+                    {assignableUsers
+                      .filter((u) => memberIds.includes(u.id))
+                      .map((u) => u.name)
+                      .join(", ") || "None"}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setMemberEditorOpen((v) => !v)}
+                    className="text-xs font-medium text-accent hover:underline"
+                  >
+                    {memberEditorOpen ? "Close" : "Manage members"}
+                  </button>
+                </div>
+                {memberEditorOpen && (
+                  <div className="mt-3 space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      {assignableUsers.map((u) => (
+                        <label
+                          key={u.id}
+                          className="flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2 py-1 text-xs"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={memberIds.includes(u.id)}
+                            onChange={(e) =>
+                              setMemberIds((ids) =>
+                                e.target.checked
+                                  ? [...ids, u.id]
+                                  : ids.filter((id) => id !== u.id)
+                              )
+                            }
+                          />
+                          {u.name}
+                        </label>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void handleSaveMembers()}
+                      disabled={savingMembers}
+                      className="btn-primary !min-h-9 text-xs"
+                    >
+                      {savingMembers ? "Saving…" : "Save members"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="border-t border-border px-4 sm:px-5">
@@ -177,6 +254,9 @@ export function ProjectDetailView({
           <ProjectIssuesTab
             detail={detail}
             loading={loading}
+            assigneeOptions={assignableUsers.filter(
+              (u) => memberIds.includes(u.id) || u.id === project.createdBy
+            )}
             onAddItem={onAddItem}
             onCompleteItem={(id) => openComplete(id)}
             onLogWork={() => openComplete()}

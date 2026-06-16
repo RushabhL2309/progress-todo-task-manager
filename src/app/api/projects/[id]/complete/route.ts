@@ -67,6 +67,7 @@ export async function POST(
         date,
         projectId,
         completed: true,
+        userId: auth.user.id,
       });
       linkedExtraTaskId = extra._id;
     }
