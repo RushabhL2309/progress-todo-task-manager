@@ -60,6 +60,8 @@ export function TrackerApp() {
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const hasBootstrapRef = useRef(false);
+  const pendingCompletionsRef = useRef<Record<string, { value: boolean; until: number }>>({});
+  const togglingCompletionRef = useRef<Set<string>>(new Set());
   const periodColumns = getColumnsForView(view, parseDateKey(anchorDate));
   const rangeFrom = periodColumns[0]?.dateKey ?? anchorDate;
   const rangeTo = periodColumns[periodColumns.length - 1]?.dateKey ?? anchorDate;
@@ -83,16 +85,40 @@ export function TrackerApp() {
     }>;
   }, [anchorDate, selectedDate, todoDate, view]);
 
+  const mergeCompletions = useCallback((server: Record<string, boolean>) => {
+    const now = Date.now();
+    const merged = { ...server };
+    for (const [key, entry] of Object.entries(pendingCompletionsRef.current)) {
+      if (entry.until < now) {
+        delete pendingCompletionsRef.current[key];
+        continue;
+      }
+      if (entry.value) merged[key] = true;
+      else delete merged[key];
+    }
+    return merged;
+  }, []);
+
   const applyBootstrap = useCallback(
     (data: Awaited<ReturnType<typeof fetchBootstrap>>) => {
+      const mergedCompletions = mergeCompletions(data.grid.completions);
+      const gridData = { ...data.grid, completions: mergedCompletions };
       setScheduledTasks(data.scheduledTasks);
-      setGrid(data.grid);
-      setStats(data.stats);
+      setGrid(gridData);
+      setStats(
+        calculatePeriodStats(
+          view,
+          parseDateKey(anchorDate),
+          data.scheduledTasks,
+          mergedCompletions,
+          data.extrasRange
+        )
+      );
       setExtraTasks(data.extrasSelected);
       setTodoDayExtras(data.extrasTodo);
       setAllExtras(data.extrasRange);
     },
-    []
+    [anchorDate, mergeCompletions, view]
   );
 
   const refreshData = useCallback(
@@ -285,12 +311,17 @@ export function TrackerApp() {
 
   async function handleToggleCompletion(taskId: string, dateKey: string, completed: boolean) {
     const key = completionKey(taskId, dateKey);
+    if (togglingCompletionRef.current.has(key)) return;
+    togglingCompletionRef.current.add(key);
+
     const prevGrid = grid;
     const prevCompletions = { ...(grid?.completions ?? {}) };
 
     const nextCompletions = { ...prevCompletions };
     if (completed) nextCompletions[key] = true;
     else delete nextCompletions[key];
+
+    pendingCompletionsRef.current[key] = { value: completed, until: Date.now() + 5000 };
 
     setGrid((g) => (g ? { ...g, completions: nextCompletions } : g));
     recomputeStats(nextCompletions, allExtras);
@@ -302,9 +333,13 @@ export function TrackerApp() {
         body: JSON.stringify({ taskId, date: dateKey, completed }),
       });
       if (!res.ok) throw new Error("Failed");
+      pendingCompletionsRef.current[key] = { value: completed, until: Date.now() + 3000 };
     } catch {
+      delete pendingCompletionsRef.current[key];
       setGrid(prevGrid);
       if (prevGrid) recomputeStats(prevGrid.completions, allExtras);
+    } finally {
+      togglingCompletionRef.current.delete(key);
     }
   }
 

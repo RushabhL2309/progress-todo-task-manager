@@ -30,7 +30,7 @@ export function TaskGrid({
   const extraMap = Object.fromEntries(extraSummaries.map((s) => [s.dateKey, s]));
   const showScrollHint = columns.length > 3;
 
-  if (loading) {
+  if (loading && tasks.length === 0) {
     return (
       <div className="card max-w-full overflow-hidden">
         <div className="h-64 animate-pulse bg-gradient-to-r from-border/20 via-border/40 to-border/20" />
@@ -144,7 +144,11 @@ export function TaskGrid({
                           col.isToday ? "bg-accent-light/25" : ""
                         } ${checked ? "bg-accent-light/15" : ""}`}
                       >
-                        <div className="flex justify-center py-1">
+                        <div
+                          className="flex justify-center py-1"
+                          onClick={(e) => e.stopPropagation()}
+                          onPointerDown={(e) => e.stopPropagation()}
+                        >
                           <Checkbox
                             checked={checked}
                             onChange={(v) => onToggle(task.id, col.dateKey, v)}

@@ -45,7 +45,12 @@ export async function PATCH(request: Request) {
   try {
     const body = await request.json();
     const taskId = typeof body.taskId === "string" ? body.taskId : "";
-    const date = typeof body.date === "string" ? body.date : "";
+    const date =
+      typeof body.date === "string"
+        ? body.date
+        : typeof body.dateKey === "string"
+          ? body.dateKey
+          : "";
     const completed = Boolean(body.completed);
 
     if (!taskId || !date) {
