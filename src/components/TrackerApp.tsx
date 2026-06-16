@@ -288,22 +288,23 @@ export function TrackerApp() {
     const prevGrid = grid;
     const prevCompletions = { ...(grid?.completions ?? {}) };
 
-    if (completed) prevCompletions[key] = true;
-    else delete prevCompletions[key];
+    const nextCompletions = { ...prevCompletions };
+    if (completed) nextCompletions[key] = true;
+    else delete nextCompletions[key];
 
-    setGrid((g) => (g ? { ...g, completions: prevCompletions } : g));
-    recomputeStats(prevCompletions, allExtras);
+    setGrid((g) => (g ? { ...g, completions: nextCompletions } : g));
+    recomputeStats(nextCompletions, allExtras);
 
     try {
       const res = await apiFetch("/api/completions", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ taskId, dateKey, completed }),
+        body: JSON.stringify({ taskId, date: dateKey, completed }),
       });
       if (!res.ok) throw new Error("Failed");
     } catch {
       setGrid(prevGrid);
-      if (prevGrid) recomputeStats(prevCompletions, allExtras);
+      if (prevGrid) recomputeStats(prevGrid.completions, allExtras);
     }
   }
 
