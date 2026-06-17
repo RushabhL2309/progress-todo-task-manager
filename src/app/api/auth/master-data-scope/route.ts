@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
+import {
+  createSessionToken,
+  masterModules,
+  sessionCookieOptions,
+  SESSION_COOKIE,
+} from "@/lib/auth";
 import type { MasterDataScope } from "@/lib/auth-types";
 import { connectDB } from "@/lib/mongodb";
 import { toSessionUser } from "@/lib/user-serializers";
@@ -27,7 +33,14 @@ export async function PATCH(request: Request) {
     user.masterDataScope = scope;
     await user.save();
 
-    return NextResponse.json({ user: toSessionUser(user) });
+    const sessionUser = toSessionUser(
+      user,
+      user.role === "master" ? masterModules() : undefined
+    );
+    const token = await createSessionToken(sessionUser, false);
+    const res = NextResponse.json({ user: sessionUser });
+    res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions(false));
+    return res;
   } catch (error) {
     console.error("PATCH /api/auth/master-data-scope", error);
     return NextResponse.json({ error: "Failed to update data view" }, { status: 500 });

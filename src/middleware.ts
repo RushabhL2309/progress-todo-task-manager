@@ -33,6 +33,7 @@ export async function middleware(request: NextRequest) {
       "x-user-modules",
       JSON.stringify(user.role === "master" ? masterModules() : user.modules)
     );
+    requestHeaders.set("x-user-master-data-scope", user.masterDataScope);
   }
 
   return NextResponse.next({ request: { headers: requestHeaders } });

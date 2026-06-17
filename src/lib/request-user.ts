@@ -1,4 +1,4 @@
-import type { SessionUser, UserModules } from "./auth-types";
+import type { MasterDataScope, SessionUser, UserModules } from "./auth-types";
 import { masterModules } from "./auth";
 
 export function getRequestUser(request: Request): SessionUser | null {
@@ -12,6 +12,10 @@ export function getRequestUser(request: Request): SessionUser | null {
   } catch {
     /* default */
   }
+  const scopeHeader = request.headers.get("x-user-master-data-scope");
+  const masterDataScope: MasterDataScope =
+    scopeHeader === "personal" ? "personal" : "platform";
+
   return {
     id,
     email: request.headers.get("x-user-email") || null,
@@ -21,6 +25,6 @@ export function getRequestUser(request: Request): SessionUser | null {
     notificationEmail: null,
     emailUpdatesEnabled: false,
     passwordChangeEnabled: false,
-    masterDataScope: "personal" as const,
+    masterDataScope: role === "master" ? masterDataScope : "personal",
   };
 }

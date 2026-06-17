@@ -49,13 +49,10 @@ export function clientAccessFilter(user: AccessUser) {
   };
 }
 
-/** Scheduled + extra tasks scoped per user; platform master sees unclaimed legacy rows too */
+/** Scheduled + extra tasks scoped per user; platform master sees all */
 export function personalTaskFilter(user: AccessUser) {
-  const uid = new mongoose.Types.ObjectId(user.id);
   if (viewsAllPlatformData(user)) {
-    return {
-      $or: [{ userId: uid }, { userId: null }, { userId: { $exists: false } }],
-    };
+    return {};
   }
-  return { userId: uid };
+  return { userId: new mongoose.Types.ObjectId(user.id) };
 }
