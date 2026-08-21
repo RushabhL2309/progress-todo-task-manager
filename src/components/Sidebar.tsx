@@ -7,6 +7,7 @@ import { NavMenuDrawer } from "./NavMenuDrawer";
 import { SettingsIcon } from "./SettingsIcon";
 
 export type AppPage =
+  | "oneview"
   | "grid"
   | "dashboard"
   | "projects"
@@ -36,6 +37,20 @@ type NavItem = {
 };
 
 const NAV: NavItem[] = [
+  {
+    id: "oneview",
+    label: "One View",
+    shortLabel: "Home",
+    desc: "All modules at a glance",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
+        <rect x="2" y="2" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+        <rect x="11" y="2" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+        <rect x="2" y="11" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+        <rect x="11" y="11" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+      </svg>
+    ),
+  },
   {
     id: "grid",
     label: "Progress Grid",
@@ -172,10 +187,12 @@ function NavButton({
       onClick={onClick}
       aria-current={isActive ? "page" : undefined}
       className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors ${
-        isActive ? "bg-accent-light text-accent shadow-sm" : "text-muted hover:bg-canvas hover:text-ink"
+        isActive
+          ? "bg-accent text-white shadow-sm dark:shadow-glow"
+          : "text-muted hover:bg-canvas hover:text-ink"
       }`}
     >
-      <span className={isActive ? "text-accent" : "text-muted"}>{item.icon}</span>
+      <span className={isActive ? "text-white" : "text-muted"}>{item.icon}</span>
       <span>
         <span className="block text-sm font-medium">{item.label}</span>
         <span className="block text-xs opacity-70">{item.desc}</span>
@@ -192,7 +209,7 @@ export function Sidebar({ active, user, onNavigate, title, mobileTrailing }: Sid
     <>
       {/* Desktop — left sidebar */}
       <aside
-        className="fixed left-4 top-4 bottom-4 z-40 hidden w-[220px] flex-col rounded-2xl border border-border bg-surface/95 shadow-[0_8px_32px_rgba(26,26,26,0.08)] backdrop-blur-md lg:flex"
+        className="fixed left-4 top-4 bottom-4 z-40 hidden w-[220px] flex-col rounded-2xl border border-border bg-surface/95 shadow-[0_8px_32px_rgba(26,26,26,0.08)] backdrop-blur-md dark:border-border dark:bg-surface/90 dark:shadow-card-dark lg:flex"
         aria-label="Main navigation"
       >
         <div className="border-b border-border px-4 py-5">
@@ -276,6 +293,7 @@ export function Sidebar({ active, user, onNavigate, title, mobileTrailing }: Sid
 
 export function defaultPageForUser(user: SessionUser): AppPage {
   const items = visibleNav(user);
+  if (items.some((i) => i.id === "oneview")) return "oneview";
   return items[0]?.id ?? "settings";
 }
 

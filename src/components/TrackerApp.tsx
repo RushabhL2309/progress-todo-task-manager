@@ -30,6 +30,8 @@ import { ProjectsView } from "./ProjectsView";
 import { SettingsView } from "./SettingsView";
 import { ViewModeTabs } from "./ViewModeTabs";
 import { NotificationBell } from "./NotificationBell";
+import { OneView } from "./OneView";
+import { ThemeToggle } from "./ThemeToggle";
 import { Toast } from "./Toast";
 import { useNotifications } from "@/hooks/useNotifications";
 
@@ -482,6 +484,7 @@ export function TrackerApp() {
         title={pageTitle}
         mobileTrailing={
           <>
+            <ThemeToggle compact />
             <NotificationBell
               items={notifications.items}
               count={notifications.count}
@@ -505,11 +508,12 @@ export function TrackerApp() {
           <div className="flex min-h-[52px] items-center gap-3 rounded-2xl border border-border bg-surface/95 px-4 py-2.5 shadow-[0_8px_32px_rgba(26,26,26,0.08)] backdrop-blur-md">
             <h1 className="min-w-0 flex-1 truncate text-base font-semibold text-ink">{pageTitle}</h1>
             <div className="flex shrink-0 items-center gap-2">
+              <ThemeToggle compact />
               <NotificationBell
-              items={notifications.items}
-              count={notifications.count}
-              onNavigate={handleNotificationNavigate}
-            />
+                items={notifications.items}
+                count={notifications.count}
+                onNavigate={handleNotificationNavigate}
+              />
               <button
                 type="button"
                 onClick={handleLogout}
@@ -539,6 +543,21 @@ export function TrackerApp() {
             <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </div>
+          )}
+
+          {page === "oneview" && (
+            <OneView
+              userName={user.name}
+              stats={stats}
+              scheduledTasks={scheduledTasks}
+              grid={grid}
+              extraTasks={todoDayExtras}
+              projects={projects}
+              todoDate={todoDate}
+              loading={loading}
+              onNavigate={setPage}
+              onToggle={handleToggleCompletion}
+            />
           )}
 
           {page === "grid" && (

@@ -75,10 +75,10 @@ export function NavMenuDrawer({
                     }}
                     aria-current={isActive ? "page" : undefined}
                     className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors ${
-                      isActive ? "bg-accent-light text-accent" : "text-ink hover:bg-canvas"
+                      isActive ? "bg-accent text-white dark:shadow-glow" : "text-ink hover:bg-canvas"
                     }`}
                   >
-                    <span className={isActive ? "text-accent" : "text-muted"}>{item.icon}</span>
+                    <span className={isActive ? "text-white" : "text-muted"}>{item.icon}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-medium">{item.label}</span>
                       <span className="block text-xs opacity-70">{item.desc}</span>

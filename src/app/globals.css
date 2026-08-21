@@ -3,8 +3,57 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --rgb-canvas: 250 250 248;
+    --rgb-surface: 255 255 255;
+    --rgb-border: 232 232 228;
+    --rgb-ink: 26 26 26;
+    --rgb-muted: 107 107 107;
+    --rgb-accent: 91 124 107;
+    --rgb-accent-light: 232 240 235;
+    --rgb-extra: 184 134 11;
+    --rgb-extra-light: 253 246 232;
+    --color-canvas: #fafaf8;
+    --color-surface: #ffffff;
+    --color-border: #e8e8e4;
+    --color-ink: #1a1a1a;
+    --color-muted: #6b6b6b;
+    --color-accent: #5b7c6b;
+    --color-accent-light: #e8f0eb;
+    --color-extra: #b8860b;
+    --color-extra-light: #fdf6e8;
+    --color-glow: rgba(91, 124, 107, 0.25);
+  }
+
+  html.dark {
+    color-scheme: dark;
+    --rgb-canvas: 5 5 5;
+    --rgb-surface: 17 17 17;
+    --rgb-border: 58 58 58;
+    --rgb-ink: 245 245 245;
+    --rgb-muted: 176 176 176;
+    --rgb-accent: 225 29 72;
+    --rgb-accent-light: 42 18 24;
+    --rgb-extra: 245 158 11;
+    --rgb-extra-light: 42 31 10;
+    --color-canvas: #050505;
+    --color-surface: #111111;
+    --color-border: #3a3a3a;
+    --color-ink: #f5f5f5;
+    --color-muted: #b0b0b0;
+    --color-accent: #e11d48;
+    --color-accent-light: #2a1218;
+    --color-extra: #f59e0b;
+    --color-extra-light: #2a1f0a;
+    --color-glow: rgba(225, 29, 72, 0.35);
+  }
+
   html {
-    color-scheme: light only;
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
   }
 
   body {
@@ -17,27 +66,56 @@
     @apply rounded-xl border border-border bg-surface shadow-sm;
   }
 
+  html.dark .card {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  }
+
+  .card-glow {
+    @apply rounded-xl border border-border bg-surface shadow-sm;
+  }
+
+  html.dark .card-glow {
+    border-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 24px var(--color-glow);
+  }
+
   .btn-primary {
-    @apply inline-flex min-h-[44px] items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90 disabled:opacity-50;
+    @apply inline-flex min-h-[44px] items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-accent) 90%, black);
   }
 
   .btn-ghost {
-    @apply inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border bg-surface text-muted transition-colors hover:border-accent/40 hover:text-ink;
+    @apply inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border bg-surface text-muted transition-colors hover:text-ink;
+  }
+
+  .btn-ghost:hover {
+    border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
   }
 
   .input-field {
-    @apply min-h-[44px] w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-muted/60 focus:border-accent;
+    @apply min-h-[44px] w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-accent;
+  }
+
+  .input-field::placeholder {
+    color: color-mix(in srgb, var(--color-muted) 60%, transparent);
   }
 
   .checkbox-cell {
-    @apply flex items-center justify-center rounded-lg transition-colors hover:bg-accent-light/50;
+    @apply flex items-center justify-center rounded-lg transition-colors;
+  }
+
+  .checkbox-cell:hover {
+    background-color: color-mix(in srgb, var(--color-accent-light) 50%, transparent);
   }
 
   .table-scroll-container {
     @apply max-w-full overflow-x-auto overflow-y-hidden overscroll-x-contain;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
-    scrollbar-color: #d4d4ce transparent;
+    scrollbar-color: var(--color-border) transparent;
   }
 
   .table-scroll-container::-webkit-scrollbar {
@@ -50,6 +128,15 @@
 
   .sticky-col {
     box-shadow: 4px 0 12px -6px rgba(26, 26, 26, 0.12);
+  }
+
+  html.dark .sticky-col {
+    box-shadow: 4px 0 12px -6px rgba(0, 0, 0, 0.5);
+  }
+
+  .coming-soon-badge {
+    @apply rounded-full bg-accent-light px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent;
+    border: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
   }
 }
 

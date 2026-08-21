@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: "class",
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -9,15 +10,19 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        canvas: "#FAFAF8",
-        surface: "#FFFFFF",
-        border: "#E8E8E4",
-        ink: "#1A1A1A",
-        muted: "#6B6B6B",
-        accent: "#5B7C6B",
-        "accent-light": "#E8F0EB",
-        extra: "#B8860B",
-        "extra-light": "#FDF6E8",
+        canvas: "rgb(var(--rgb-canvas) / <alpha-value>)",
+        surface: "rgb(var(--rgb-surface) / <alpha-value>)",
+        border: "rgb(var(--rgb-border) / <alpha-value>)",
+        ink: "rgb(var(--rgb-ink) / <alpha-value>)",
+        muted: "rgb(var(--rgb-muted) / <alpha-value>)",
+        accent: "rgb(var(--rgb-accent) / <alpha-value>)",
+        "accent-light": "rgb(var(--rgb-accent-light) / <alpha-value>)",
+        extra: "rgb(var(--rgb-extra) / <alpha-value>)",
+        "extra-light": "rgb(var(--rgb-extra-light) / <alpha-value>)",
+      },
+      boxShadow: {
+        glow: "0 0 24px var(--color-glow)",
+        "card-dark": "0 8px 32px rgba(0,0,0,0.45)",
       },
     },
   },

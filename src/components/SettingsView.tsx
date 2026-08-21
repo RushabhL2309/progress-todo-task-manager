@@ -16,6 +16,7 @@ import {
 } from "@/lib/project-layout-prefs";
 import { LayoutViewToggle } from "./LayoutViewToggle";
 import { SettingsIcon } from "./SettingsIcon";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface HealthResponse {
   demo: boolean;
@@ -290,13 +291,23 @@ export function SettingsView({ user, onDemoChange, onUserPrefsChange }: Settings
 
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="card p-4 sm:p-5">
+          <h2 className="text-sm font-semibold text-ink">Appearance</h2>
+          <p className="mt-1 text-xs text-muted">Switch between light and dark dashboard theme</p>
+          <div className="mt-4">
+            <ThemeToggle />
+          </div>
+        </div>
+
+        <div className="card p-4 sm:p-5">
           <h2 className="text-sm font-semibold text-ink">Projects layout</h2>
           <p className="mt-1 text-xs text-muted">Default view on the Projects tab</p>
           <div className="mt-4">
             <LayoutViewToggle value={projectLayout} onChange={handleLayoutDefault} />
           </div>
         </div>
+      </div>
 
+      <div className="grid gap-5 lg:grid-cols-2">
         <div className="card p-4 sm:p-5">
           <h2 className="text-sm font-semibold text-ink">Account</h2>
           <dl className="mt-4 text-sm">

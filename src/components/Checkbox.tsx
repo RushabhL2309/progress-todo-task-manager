@@ -31,8 +31,8 @@ export function Checkbox({ checked, onChange, label, disabled, size = "md" }: Ch
       <span
         className={`flex ${box} items-center justify-center rounded-[6px] border-2 transition-colors duration-150 ${
           checked
-            ? "border-accent bg-accent text-white shadow-sm shadow-accent/25"
-            : "border-border bg-surface"
+            ? "border-accent bg-accent text-white shadow-sm shadow-accent/30"
+            : "border-muted/70 bg-canvas dark:border-muted dark:bg-[#1a1a1a]"
         }`}
       >
         {checked && (

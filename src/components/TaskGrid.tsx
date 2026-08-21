@@ -99,7 +99,7 @@ export function TaskGrid({
                     <button
                       type="button"
                       onClick={() => onSelectDay?.(col.dateKey)}
-                      className="flex w-full flex-col items-center gap-1 rounded-lg px-1 py-2 transition-colors hover:bg-white/80"
+                      className="flex w-full flex-col items-center gap-1 rounded-lg px-1 py-2 transition-colors hover:bg-surface"
                     >
                       <span className="hidden text-[11px] font-semibold text-ink sm:inline">{col.label}</span>
                       <span className="text-[11px] font-semibold text-ink sm:hidden">{col.shortLabel}</span>
@@ -121,16 +121,16 @@ export function TaskGrid({
           </thead>
           <tbody>
             {tasks.map((task, rowIdx) => {
-              const rowBg = rowIdx % 2 === 0 ? "bg-surface" : "bg-canvas/40";
+              const isAlt = rowIdx % 2 === 1;
+              const rowBg = isAlt ? "bg-canvas/70 dark:bg-canvas/80" : "bg-surface";
+              const stickyBg = isAlt ? "bg-canvas dark:bg-[#161616]" : "bg-surface dark:bg-[#111111]";
               return (
                 <tr
                   key={task.id}
-                  className={`border-b border-border/60 transition-colors last:border-b-0 hover:bg-accent-light/20 ${rowBg}`}
+                  className={`border-b border-border/60 transition-colors last:border-b-0 hover:bg-accent-light/30 ${rowBg}`}
                 >
                   <td
-                    className={`sticky-col sticky left-0 z-10 min-w-[140px] border-r border-border px-3 py-3 sm:min-w-[180px] sm:px-4 ${
-                      rowIdx % 2 === 0 ? "bg-surface" : "bg-[#F5F5F2]"
-                    }`}
+                    className={`sticky-col sticky left-0 z-10 min-w-[140px] border-r border-border px-3 py-3 sm:min-w-[180px] sm:px-4 ${stickyBg}`}
                   >
                     <span className="font-medium text-ink">{task.name}</span>
                   </td>
