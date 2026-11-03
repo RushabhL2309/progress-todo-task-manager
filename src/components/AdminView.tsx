@@ -11,6 +11,7 @@ const MODULE_LABELS: Record<keyof UserModules, string> = {
   projects: "Project management",
   client_updates: "Daily client update",
   chat: "Internal chat",
+  finance: "Money Tracker",
 };
 
 const EMPTY_MODULES: UserModules = {
@@ -19,6 +20,7 @@ const EMPTY_MODULES: UserModules = {
   projects: false,
   client_updates: false,
   chat: false,
+  finance: false,
 };
 
 function UserEditForm({

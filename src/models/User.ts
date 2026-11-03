@@ -7,6 +7,7 @@ const UserModulesSchema = new Schema(
     projects: { type: Boolean, default: false },
     client_updates: { type: Boolean, default: false },
     chat: { type: Boolean, default: false },
+    finance: { type: Boolean, default: true },
   },
   { _id: false }
 );

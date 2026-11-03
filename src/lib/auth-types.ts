@@ -11,6 +11,7 @@ export interface UserModules {
   projects: boolean;
   client_updates: boolean;
   chat: boolean;
+  finance: boolean;
 }
 
 export const ALL_MODULES: (keyof UserModules)[] = [
@@ -19,6 +20,7 @@ export const ALL_MODULES: (keyof UserModules)[] = [
   "projects",
   "client_updates",
   "chat",
+  "finance",
 ];
 
 export interface SessionUser {

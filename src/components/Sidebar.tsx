@@ -14,6 +14,7 @@ export type AppPage =
   | "todo"
   | "tasks"
   | "clients"
+  | "finance"
   | "chat"
   | "admin"
   | "settings";
@@ -126,6 +127,20 @@ const NAV: NavItem[] = [
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
         <path d="M4 6H16M4 10H16M4 14H11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    id: "finance",
+    label: "Money Tracker",
+    shortLabel: "Finance",
+    desc: "Income & expenses",
+    module: "finance",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
+        <rect x="2.5" y="4.5" width="15" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M13.5 10H14.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <circle cx="8" cy="10" r="2" stroke="currentColor" strokeWidth="1.5" />
       </svg>
     ),
   },

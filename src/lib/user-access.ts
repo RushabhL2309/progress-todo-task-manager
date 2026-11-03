@@ -6,6 +6,7 @@ const ALL_TRUE: UserModules = {
   projects: true,
   client_updates: true,
   chat: true,
+  finance: true,
 };
 
 export function effectiveModules(user: SessionUser): UserModules {

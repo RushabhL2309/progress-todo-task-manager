@@ -189,3 +189,52 @@ export interface GridData {
   extraSummaries: ExtraDaySummary[];
   columns: DayColumn[];
 }
+
+export type FinanceAccountType = "bank" | "cash" | "card" | "wallet" | "savings";
+export type FinanceTransactionType = "expense" | "income" | "transfer";
+
+export interface FinanceAccountDTO {
+  id: string;
+  name: string;
+  type: FinanceAccountType;
+  initialBalance: number;
+  currentBalance: number;
+  color: string;
+  icon: string;
+  isDefault?: boolean;
+  createdAt: string;
+}
+
+export interface FinanceTransactionDTO {
+  id: string;
+  accountId: string;
+  accountName: string;
+  toAccountId?: string | null;
+  toAccountName?: string | null;
+  type: FinanceTransactionType;
+  amount: number;
+  category: string;
+  title: string;
+  date: string;
+  createdAt: string;
+}
+
+export interface FinanceCategoryDTO {
+  id: string;
+  name: string;
+  type: "expense" | "income" | "both";
+  color: string;
+  icon?: string;
+}
+
+export interface FinanceStatsDTO {
+  totalBalance: number;
+  totalIncome: number;
+  totalExpense: number;
+  netSavings: number;
+  savingsRatePercent: number;
+  accounts: FinanceAccountDTO[];
+  categoryBreakdown: { category: string; amount: number; percentage: number; color: string }[];
+  dailyTrend: { date: string; income: number; expense: number }[];
+  recentTransactions: FinanceTransactionDTO[];
+}

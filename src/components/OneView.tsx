@@ -37,7 +37,6 @@ const COMING_SOON = [
   { id: "habits", title: "Habits", desc: "Dedicated habit streaks & badges" },
   { id: "goals", title: "Goals", desc: "Long-term goal progress" },
   { id: "journal", title: "Journal", desc: "Daily reflections" },
-  { id: "finance", title: "Finance", desc: "Income & expenses" },
 ] as const;
 
 function useDark() {
@@ -100,6 +99,20 @@ export function OneView({
   const extrasDone = extraTasks.filter((e) => e.completed).length;
   const extrasTotal = extraTasks.length;
   const score = stats?.overallScorePercent ?? 0;
+  const [finStats, setFinStats] = useState<{ totalBalance: number; totalIncome: number; totalExpense: number } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/finance/stats?days=30")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (active && data) setFinStats(data);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const dailyBars = useMemo(
     () =>
@@ -447,6 +460,39 @@ export function OneView({
             {projects.filter((p) => p.status === "active").length} active projects
           </p>
         </section>
+      </div>
+
+      {/* Money Tracker Quick Card */}
+      <div className="flex flex-col gap-4 rounded-2xl border border-border bg-surface/80 p-4 shadow-sm backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500 font-bold text-lg">
+            ₹
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-ink">Money Tracker</h3>
+            <p className="text-xs text-muted">
+              Net Balance:{" "}
+              <span className="font-semibold text-ink">
+                ₹{(finStats?.totalBalance ?? 0).toLocaleString("en-IN")}
+              </span>
+              {" • "}
+              <span className="text-emerald-600 dark:text-emerald-400">
+                +₹{(finStats?.totalIncome ?? 0).toLocaleString("en-IN")}
+              </span>
+              {" / "}
+              <span className="text-rose-600 dark:text-rose-400">
+                -₹{(finStats?.totalExpense ?? 0).toLocaleString("en-IN")}
+              </span>
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => onNavigate("finance")}
+          className="flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:opacity-90 self-start sm:self-auto"
+        >
+          Open Money Tracker →
+        </button>
       </div>
 
       <div>

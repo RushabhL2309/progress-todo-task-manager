@@ -23,6 +23,7 @@ export function masterModules(): UserModules {
     projects: true,
     client_updates: true,
     chat: true,
+    finance: true,
   };
 }
 

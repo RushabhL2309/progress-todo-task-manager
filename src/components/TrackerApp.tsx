@@ -22,6 +22,7 @@ import { ClientUpdatesView } from "./ClientUpdatesView";
 import { DailyTodoView } from "./DailyTodoView";
 import { DashboardCharts } from "./DashboardCharts";
 import { DateNavigator } from "./DateNavigator";
+import { FinanceView } from "./FinanceView";
 import { GridView } from "./GridView";
 import { Sidebar, canAccessPage, defaultPageForUser, pageLabel, type AppPage } from "./Sidebar";
 import { TasksView } from "./TasksView";
@@ -657,6 +658,8 @@ export function TrackerApp() {
           )}
 
           {page === "clients" && <ClientUpdatesView />}
+
+          {page === "finance" && <FinanceView />}
 
           {page === "chat" && <ChatView />}
 
