@@ -1,4 +1,5 @@
-import { hashPassword, masterModules } from "./auth";
+import { masterModules } from "./auth";
+import { hashPassword } from "./passwords";
 import { MASTER_DISPLAY_NAME } from "./auth-types";
 import { migrateLegacyDataToMaster } from "./migrate-legacy-data";
 import { nameKeyFrom } from "./user-login";

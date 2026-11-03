@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireMaster } from "@/lib/api-auth";
-import { hashPassword } from "@/lib/auth";
+import { hashPassword } from "@/lib/passwords";
 import type { UserModules } from "@/lib/auth-types";
 import { connectDB } from "@/lib/mongodb";
 import { nameKeyFrom } from "@/lib/user-login";

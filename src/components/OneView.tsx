@@ -17,7 +17,7 @@ import {
 } from "recharts";
 import { format, parseISO } from "date-fns";
 import { completionKey } from "@/lib/dates";
-import type { ExtraTaskDTO, GridData, PeriodStats, ProjectDTO, ScheduledTaskDTO } from "@/lib/types";
+import type { DayColumn, ExtraTaskDTO, GridData, PeriodStats, ProjectDTO, ScheduledTaskDTO } from "@/lib/types";
 import type { AppPage } from "./Sidebar";
 
 interface OneViewProps {
@@ -88,10 +88,10 @@ export function OneView({
 }: OneViewProps) {
   const dark = useDark();
   const C = chartTheme(dark);
-  const emptyObj = useMemo(() => ({}), []);
-  const emptyArr = useMemo(() => [], []);
-  const completions = grid?.completions ?? emptyObj;
-  const columns = grid?.columns ?? emptyArr;
+  const emptyCompletions = useMemo<Record<string, boolean>>(() => ({}), []);
+  const emptyColumns = useMemo<DayColumn[]>(() => [], []);
+  const completions = grid?.completions ?? emptyCompletions;
+  const columns = grid?.columns ?? emptyColumns;
   const tasks = grid?.scheduledTasks?.length ? grid.scheduledTasks : scheduledTasks;
 
   const routineDone = tasks.filter((t) =>

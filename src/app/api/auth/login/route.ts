@@ -4,8 +4,8 @@ import {
   masterModules,
   sessionCookieOptions,
   SESSION_COOKIE,
-  verifyPassword,
 } from "@/lib/auth";
+import { verifyPassword } from "@/lib/passwords";
 import { connectDB } from "@/lib/mongodb";
 import { nameKeyFrom } from "@/lib/user-login";
 import { toSessionUser, toUserDTO } from "@/lib/user-serializers";

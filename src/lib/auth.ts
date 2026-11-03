@@ -1,4 +1,3 @@
-import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 import type { SessionUser, UserModules } from "./auth-types";
 
@@ -7,14 +6,6 @@ export const SESSION_COOKIE = "pt_session";
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET ?? "dev-change-me-in-production-min-32-chars!!"
 );
-
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 12);
-}
-
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(password, hash);
-}
 
 export function masterModules(): UserModules {
   return {
