@@ -56,6 +56,7 @@ export async function POST(request: Request) {
         projects: Boolean(modules.projects),
         client_updates: Boolean(modules.client_updates),
         chat: Boolean(modules.chat),
+        finance: Boolean(modules.finance),
       },
       isActive: true,
       emailUpdatesEnabled,

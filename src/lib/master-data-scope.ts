@@ -1,4 +1,4 @@
-import type { MasterDataScope, SessionUser } from "./auth-types";
+import type { SessionUser } from "./auth-types";
 
 /** Subset used by DB access filters. */
 export type AccessUser = Pick<SessionUser, "id" | "role" | "masterDataScope">;

@@ -13,6 +13,7 @@ export function toUserDTO(doc: UserDocument): UserDTO {
       projects: doc.modules?.projects ?? false,
       client_updates: doc.modules?.client_updates ?? false,
       chat: doc.modules?.chat ?? false,
+      finance: doc.modules?.finance ?? false,
     },
     isActive: doc.isActive,
     notificationEmail: doc.notificationEmail ?? null,

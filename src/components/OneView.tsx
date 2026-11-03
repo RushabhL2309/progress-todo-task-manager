@@ -88,8 +88,10 @@ export function OneView({
 }: OneViewProps) {
   const dark = useDark();
   const C = chartTheme(dark);
-  const completions = grid?.completions ?? {};
-  const columns = grid?.columns ?? [];
+  const emptyObj = useMemo(() => ({}), []);
+  const emptyArr = useMemo(() => [], []);
+  const completions = grid?.completions ?? emptyObj;
+  const columns = grid?.columns ?? emptyArr;
   const tasks = grid?.scheduledTasks?.length ? grid.scheduledTasks : scheduledTasks;
 
   const routineDone = tasks.filter((t) =>

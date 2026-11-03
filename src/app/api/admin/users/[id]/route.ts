@@ -50,6 +50,7 @@ export async function PATCH(
         projects: Boolean(m.projects),
         client_updates: Boolean(m.client_updates),
         chat: Boolean(m.chat),
+        finance: Boolean(m.finance),
       };
     }
     if (typeof body.password === "string" && body.password.length >= 4) {

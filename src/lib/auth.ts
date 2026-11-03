@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
-import type { MasterDataScope, SessionUser, UserModules } from "./auth-types";
+import type { SessionUser, UserModules } from "./auth-types";
 
 export const SESSION_COOKIE = "pt_session";
 
